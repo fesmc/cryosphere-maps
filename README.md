@@ -16,8 +16,10 @@ full-resolution posters (`full`) and web tiles.
 ## Setup
 
 ```bash
-git clone git@github.com:fesmc/cryosphere-maps.git
+git clone --single-branch git@github.com:fesmc/cryosphere-maps.git
 ```
+`--single-branch` skips the `gh-pages` branch, which holds the published
+website (map tiles and poster PDFs, ~160 MB) and is only needed to publish it.
 ```bash
 cd cryosphere-maps && julia --project=. -e 'using Pkg; Pkg.instantiate()'
 ```
@@ -31,6 +33,28 @@ The NASA Earthdata files need an account and a `~/.netrc` entry (file mode 600):
 ```
 machine urs.earthdata.nasa.gov login <user> password <password>
 ```
+
+### Full-resolution posters on your own machine
+
+The PDFs and full PNGs are not in the repo (download them from the website,
+or make them yourself; they stay untracked). Steps 0–1 run on any machine with
+Julia, internet access and an Earthdata login; GDAL comes with the Julia
+packages. Plotting at full resolution needs ~16 GB of memory.
+
+```bash
+export CRYOMAPS_DATA=~/cryomaps-data
+```
+```bash
+julia --project=. scripts/fetch_data.jl
+```
+```bash
+julia --project=. scripts/prepare.jl
+```
+```bash
+julia --project=. scripts/greenland.jl full
+```
+
+The SLURM jobs in `jobs/` run the same scripts on albedo.
 
 ## Data sources
 
