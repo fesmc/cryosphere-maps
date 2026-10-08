@@ -4,7 +4,7 @@
 #   <region>/tiles/<style>/<z>/<x>/<y>.jpg   raster tile pyramids of the map styles
 #   <region>/*.geojson                       contours, ice margin, divides, names, sea-ice edges
 #   <region>/config.json                     tile grid, projection, colour bars, key numbers
-#   img/                                     the small poster PNGs
+#   img/, posters/                           the small poster PNGs; PDFs and full PNGs
 # and site/_gallery.md, the poster gallery of the home page.
 #
 # Usage: julia --project=. scripts/web.jl [full] [greenland] [antarctica] [gallery]
@@ -181,8 +181,7 @@ function build_region(region; full)
         "styles" => [Dict("id" => id, "name" => name, "colorbars" => colorbars(style, cm, lim))
                      for (id, name, style, cm) in WEB_STYLES],
         "seaice" => seaice,
-        "numbers" => Dict(k => Float64(a[k]) for k in ("ice_area_km2", "floating_area_km2", "ice_volume_km3",
-                                                       "sea_level_equivalent_m", "max_thickness_m")),
+        "numbers" => Dict(String(k) => Float64(v) for (k, v) in a if v isa Real),
         "resolution_m" => 1e3dx)
     open(io -> JSON.json(io, cfg), joinpath(out, "config.json"), "w")
     println("wrote ", out)
@@ -194,12 +193,16 @@ const NAME_PARTS = Dict("velocity" => "ice velocity", "surface" => "surface elev
     "lajolla" => "lajolla colours", "tier2" => "more names", "custom" => "added names")
 
 """
-Copy the small poster PNGs to the site and write site/_gallery.md (included by
-index.qmd): the default posters with links to their PDFs, then the variants.
+Copy the poster files to the site (small PNGs to assets/img/, the PDFs and
+full PNGs of the default posters to assets/posters/) and write site/_gallery.md
+(included by index.qmd): the default posters with their downloads, then the
+variants.
 """
 function build_gallery()
-    dst = joinpath(ASSETS, "img"); rm(dst; recursive=true, force=true); mkpath(dst)
-    pdf(f) = "https://github.com/fesmc/cryosphere-maps/raw/main/plots/" * replace(f, "_small.png" => ".pdf")
+    img, big = joinpath(ASSETS, "img"), joinpath(ASSETS, "posters")
+    for d in (img, big)
+        rm(d; recursive=true, force=true); mkpath(d)
+    end
     function caption(f)
         region, _, parts... = split(replace(f, "_small.png" => ""), "_")
         return uppercasefirst(region) * ": " * join([get(NAME_PARTS, p, p) for p in parts], ", ")
@@ -211,15 +214,18 @@ function build_gallery()
         isempty(fs) && continue
         println(md, "## ", title, "\n\n::: {.grid .poster-grid}")
         for f in fs
-            cp(joinpath(dir, f), joinpath(dst, f); force=true)
-            region = split(f, "_")[1]
+            cp(joinpath(dir, f), joinpath(img, f); force=true)
             println(md, "::: {.g-col-12 .g-col-md-", title == "Posters" ? 6 : 4, "}")
             println(md, "![", caption(f), "](assets/img/", f, "){group=\"", title, "\"}\n")
-            if title == "Posters"
-                println(md, "[", caption(f), "]{.poster-links} · [PDF, A0](", pdf(f), ") · [interactive map](", region, ".qmd)")
-            else
-                println(md, "[", caption(f), "]{.poster-links}")
+            links = String[]
+            for (ext, what) in ((".pdf", "PDF, A0"), (".png", "PNG, 100 dpi"))
+                src = joinpath(dir, replace(f, "_small.png" => ext))
+                isfile(src) || continue
+                cp(src, joinpath(big, basename(src)); force=true)
+                mb = round(Int, filesize(src)/2^20)
+                push!(links, "[$what, $mb MB](assets/posters/$(basename(src)))")
             end
+            println(md, "[", caption(f), "]{.poster-links}", isempty(links) ? "" : " · " * join(links, " · "))
             println(md, ":::")
         end
         println(md, ":::\n")

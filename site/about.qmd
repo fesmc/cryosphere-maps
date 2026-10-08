@@ -23,15 +23,46 @@ velocity on a logarithmic colour scale; slow ice fades into the hillshade.
 The key numbers are computed on the same grids, with cell areas corrected for
 the distortion of the projection. The sea-level equivalent counts the grounded
 ice above flotation (ice density 917 kg m⁻³, sea water 1027 kg m⁻³ for
-flotation, melt water 1000 kg m⁻³, ocean area 3.625 × 10⁸ km²). For Greenland
-the numbers cover the ice sheet within the IMBIE 2 regions, without the
-peripheral ice caps.
+flotation, melt water 1000 kg m⁻³, ocean area 3.625 × 10⁸ km²). The regions
+come from the IMBIE 2 drainage basins (East and West Antarctica, the Antarctic
+Peninsula; for Greenland the ice sheet without the peripheral ice caps). These
+polygons cover the grounded ice, so ice outside them (ice shelves, islands, the
+ice margin) is given to the nearest region.
 
-On the interactive maps, the raster layers are pre-rendered tiles of the poster
-styles at the grid resolution. Place names come from the curated label lists of
-the posters; zoom in to see all glacier names of the gazetteers (GeoNames for
-Greenland, glaciers, ice streams, ice shelves and domes of the SCAR gazetteer
-for Antarctica).
+## The website
+
+The site is built with [Quarto](https://quarto.org) and hosted on GitHub Pages.
+The poster gallery shows the sharing versions of the posters with links to the
+A0 PDFs.
+
+The interactive maps use [OpenLayers](https://openlayers.org) with
+[proj4js](http://proj4js.org), in the same polar stereographic projections as
+the posters (EPSG:3413 and EPSG:3031), so nothing is reprojected in the browser.
+
+- **Raster layers.** Each map style (ice velocity in two colour maps, surface
+  elevation, bed elevation) is rendered by the same Julia code as the posters,
+  at the full grid resolution (500 m for Greenland, 1 km for Antarctica). The
+  image is cut into a pyramid of 256 × 256 pixel JPEG tiles
+  ([JpegTurbo.jl](https://github.com/JuliaIO/JpegTurbo.jl)), halving the
+  resolution by 2 × 2 averaging from one zoom level to the next. OpenLayers
+  loads them through a custom tile grid with the extent and resolutions of the
+  poster grid.
+- **Vector layers.** The surface contours, ice margin, grounding line and
+  drainage divides are traced from the grids with
+  [Contour.jl](https://github.com/JuliaGeometry/Contour.jl), as on the posters.
+  The sea-ice edges are reprojected and clipped with GDAL (ogr2ogr). All are
+  stored as GeoJSON in projected coordinates.
+- **Names.** The place names of the posters and the full gazetteers
+  ([GeoNames](https://www.geonames.org) for Greenland, the
+  [SCAR Composite Gazetteer](https://data.aad.gov.au/aadc/gaz/scar/) for
+  Antarctica) are GeoJSON points. Names of tier 1 show at all zoom levels,
+  tier 2 and the gazetteer as you zoom in; OpenLayers leaves out labels that
+  would overlap. Clicking a name shows its other names, position and source.
+- **Search.** The search box suggests all names. A name is matched on any of
+  its names (ignoring case), and the map zooms to it.
+
+The site is published as a single commit of the `gh-pages` branch, replaced at
+each update, so the tiles and PDFs do not build up a history in the repository.
 
 ## Reproducing the maps
 

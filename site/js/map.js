@@ -55,6 +55,19 @@
 
   function fmt(v, d) { return v.toLocaleString('en', {maximumFractionDigits: d, minimumFractionDigits: d}); }
 
+  // key numbers of the whole ice sheet and, where given (Antarctica), of its regions
+  function numbersTable(n) {
+    const cols = [['All', '']].concat(n.east_ice_area_km2 === undefined ? [] :
+      [['East', 'east_'], ['West', 'west_'], ['Pen.', 'peninsula_']]);
+    const rows = [['Ice area [10⁶ km²]', 'ice_area_km2', 1e6, 2], ['&nbsp;floating [10³ km²]', 'floating_area_km2', 1e3, 0],
+                  ['Ice volume [10⁶ km³]', 'ice_volume_km3', 1e6, 2], ['Max. thickness [m]', 'max_thickness_m', 1, 0],
+                  ['Sea-level equiv. [m]', 'sea_level_equivalent_m', 1, 1]];
+    const head = cols.length > 1 ? `<tr><th></th>${cols.map(c => `<th>${c[0]}</th>`).join('')}</tr>` : '';
+    return `<table class="cryo-numbers">${head}${rows.map(([name, key, f, d]) =>
+      `<tr><td>${name}</td>${cols.map(c => `<td>${fmt(n[c[1] + key] / f, d)}</td>`).join('')}</tr>`).join('')}</table>` +
+      (cols.length > 1 ? '<small>Regions of IMBIE 2; ice shelves and islands go to the nearest region.</small>' : '');
+  }
+
   function init(cfg) {
     proj4.defs(cfg.epsg, cfg.proj4);
     ol.proj.proj4.register(proj4);
@@ -139,13 +152,7 @@
           `<label><input type="checkbox" data-layer="${k}" ${on ? 'checked' : ''}> ${t}</label>`).join('')}
       </details>
       <details open><summary>Legend</summary><div class="cryo-legend"></div></details>
-      <details><summary>Key numbers</summary><table class="cryo-numbers">
-        <tr><td>Ice area</td><td>${fmt(n.ice_area_km2 / 1e6, 2)} million km²</td></tr>
-        ${n.floating_area_km2 > 1e4 ? `<tr><td>&nbsp;of which floating</td><td>${fmt(n.floating_area_km2 / 1e6, 2)} million km²</td></tr>` : ''}
-        <tr><td>Ice volume</td><td>${fmt(n.ice_volume_km3 / 1e6, 2)} million km³</td></tr>
-        <tr><td>Maximum thickness</td><td>${fmt(n.max_thickness_m, 0)} m</td></tr>
-        <tr><td>Sea-level equivalent</td><td>${fmt(n.sea_level_equivalent_m, 1)} m</td></tr>
-      </table></details>`;
+      <details><summary>Key numbers</summary>${numbersTable(cfg.numbers)}</details>`;
 
     // on small screens start with the panel folded, except the search box
     if (el.clientWidth < 700) panel.querySelectorAll('details').forEach(d => d.open = false);

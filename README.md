@@ -71,8 +71,8 @@ run as SLURM jobs from the repo root, with logs in `logs/`.
    sbatch jobs/prepare.sh
    ```
    → `$CRYOMAPS_DATA/prepared/{greenland_500m,antarctica_1000m}.nc`, with the
-   key numbers (area, volume, maximum thickness, sea-level equivalent) as
-   global attributes, and in the repo `data/prepared/`: the same grids at
+   key numbers (area, volume, maximum thickness, sea-level equivalent; for
+   Antarctica also East, West and the Peninsula) as global attributes, and in the repo `data/prepared/`: the same grids at
    every 4th node, the gazetteers and the sea-ice edges (GeoJSON). Commit
    these when they change.
 
@@ -82,7 +82,8 @@ run as SLURM jobs from the repo root, with logs in `logs/`.
    ```
    → `plots/{greenland,antarctica}_A0_velocity.pdf`, which is true A0 size
    (1 unit = 1 pt), plus `.png` (a 100 dpi preview) and `_small.png` (1600 px
-   on the long edge, for sharing).
+   on the long edge, for sharing). Only the small PNGs are tracked in git; the
+   PDFs and full PNGs are published on the website (step 3).
 
    The plot scripts can also be run directly, on any machine:
    ```bash
@@ -113,8 +114,8 @@ run as SLURM jobs from the repo root, with logs in `logs/`.
 
    The default poster goes to `plots/`; any other option combination goes to
    `plots/variants/`, with the options in the file name (for example
-   `antarctica_A0_velocity_ember_small.png`). Only the small PNGs of the
-   variants are tracked. Each run reports any overlapping labels.
+   `antarctica_A0_velocity_ember_small.png`). Each run reports any
+   overlapping labels.
 
 3. **Website**: a Quarto site (`site/`) with the poster gallery and
    interactive maps (OpenLayers, in the polar stereographic projections),
@@ -123,11 +124,14 @@ run as SLURM jobs from the repo root, with logs in `logs/`.
    sbatch jobs/web.sh
    ```
    → `site/assets/<region>/`: tile pyramids of four map styles from the
-   full-resolution grids, GeoJSON layers and the map configuration. Copy them
-   to the machine with Quarto, update the gallery from `plots/`, then preview
-   or publish:
+   full-resolution grids, GeoJSON layers and the map configuration. Copy them,
+   and the poster PDFs and PNGs, to the machine with Quarto, update the
+   gallery from `plots/`, then preview or publish:
    ```bash
    rsync -a albedo0.dmawi.de:models/cryosphere-maps/site/assets/ site/assets/
+   ```
+   ```bash
+   rsync -a 'albedo0.dmawi.de:models/cryosphere-maps/plots/*_A0_velocity.*' plots/
    ```
    ```bash
    julia --project=. scripts/web.jl gallery
@@ -136,8 +140,10 @@ run as SLURM jobs from the repo root, with logs in `logs/`.
    cd site && quarto preview
    ```
    ```bash
-   cd site && quarto publish gh-pages
+   site/publish.sh
    ```
+   `site/publish.sh` renders the site and replaces the `gh-pages` branch by a
+   single commit, so tiles and PDFs do not accumulate in the repository.
    Without albedo, `julia --project=. scripts/web.jl` builds all assets from
    the coarse grids in the repo, for a local preview.
 
@@ -161,7 +167,8 @@ and rerun steps 1–2.
   coast to avoid overlaps. An alternative `:columns` layout (stacked margin
   columns, as in Rignot & Mouginot 2012) is also available.
 - `scripts/web.jl`: step 3, the web map assets and the poster gallery.
-- `site/`: the Quarto website; `site/js/map.js` is the interactive map.
+- `site/`: the Quarto website; `site/js/map.js` is the interactive map,
+  `site/publish.sh` publishes it.
 - `scripts/make_qr.jl`: a one-off that wrote the QR code of the website
   (`data/qr_site.txt`).
 - `scripts/add_tiers.jl`: a one-off that added the `tier` column to the label

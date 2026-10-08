@@ -14,7 +14,8 @@
 .cryo-cb-ticks span { position: absolute; transform: translateX(-50%); }
 .cryo-line { font-size: 12px; margin-top: 4px; }
 .cryo-numbers td { padding: 1px 4px; }
-.cryo-numbers td:last-child { text-align: right; font-weight: 600; }
+.cryo-numbers td + td, .cryo-numbers th { text-align: right; }
+.cryo-numbers td:nth-child(2) { font-weight: 600; }
 .cryo-popup {
   background: #fff; border-radius: 5px; padding: 6px 9px; font-size: 13px; max-width: 280px;
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);

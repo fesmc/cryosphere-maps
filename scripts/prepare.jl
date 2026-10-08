@@ -134,6 +134,49 @@ end
 # Key numbers
 # ---------------------------------------------------------------------------
 
+"""
+Fill the zero cells of an integer label grid with the label of the nearest
+labelled cell (multi-source breadth-first search over 8 neighbours), moving
+only through cells where `through` is true.
+"""
+function nearest_fill(lab; through=trues(size(lab)))
+    out = copy(lab); nx, ny = size(out)
+    q = Tuple{Int32, Int32}[(i, j) for j in 1:ny for i in 1:nx if out[i, j] != 0]
+    head = 1
+    while head <= length(q)
+        i, j = q[head]; head += 1
+        for di in -1:1, dj in -1:1
+            a, b = i + di, j + dj
+            (1 <= a <= nx && 1 <= b <= ny && out[a, b] == 0 && through[a, b]) || continue
+            out[a, b] = out[i, j]; push!(q, (a, b))
+        end
+    end
+    return out
+end
+
+"""
+Region id (1, 2, ... for the values `names` of attribute `attr`; with `others`,
+all remaining polygons get id length(names)+1) of every cell of grid `g`,
+from the IMBIE 2 polygons of `reg` ("GRE", "ANT"). The polygons cover the
+grounded ice, so ice outside them (ice shelves, the ice margin) gets the region
+of the nearest polygon it is connected to through ice (`ice`). With `detached`,
+ice not connected to any polygon (e.g. islands) gets the nearest region too;
+otherwise it is left at 0.
+"""
+function imbie_regions(g, reg, attr, names, ice; others=false, detached=false, name="regions")
+    shp = imbie_shapefile(reg)
+    x, y = axes_km(g)
+    lab = zeros(Int32, length(x), length(y))
+    sel = others ? [names; "others"] : names
+    for (k, n) in enumerate(sel)
+        where = n == "others" ? join(["$attr <> '$v'" for v in names], " AND ") : "$attr = '$n'"
+        r = rasterize(shp, g; where, name="$(name)_$k") .> 0
+        lab[r .& (lab .== 0)] .= k
+    end
+    lab = nearest_fill(lab; through=ice)
+    return detached ? nearest_fill(lab) : lab
+end
+
 const RHO_ICE    = 917.0       # kg/m³
 const RHO_SEA    = 1027.0      # kg/m³, for flotation
 const RHO_FRESH  = 1000.0      # kg/m³, melt water volume added to the ocean
@@ -159,6 +202,9 @@ function ice_numbers(g, proj, mask, H, zb; domain=trues(size(mask)), prefix="")
         end
     end
     sle = vaf*RHO_ICE/(RHO_FRESH*OCEAN_AREA)
+    imax = argmax(ifelse.(domain .& ((mask .== 2) .| (mask .== 3)) .& isfinite.(H), H, -Inf))
+    lon, lat = unproject(proj, x[imax[1]], y[imax[2]])
+    println("  $(prefix)max thickness at $(round(lat, digits=2))°, $(round(lon, digits=2))°")
     println("  $(prefix)area $(round(area/1e12, digits=3)) Mkm², volume $(round(vol/1e15, digits=3)) Mkm³, ",
             "SLE $(round(sle, digits=2)) m, max thickness $(round(Int, hmax)) m")
     out = [prefix*"ice_area_km2" => area/1e6, prefix*"floating_area_km2" => afl/1e6, prefix*"ice_volume_km3" => vol/1e9,
@@ -192,9 +238,10 @@ function prepare_greenland()
               s_srs="EPSG:4326", resample="bilinear", name="grl_etopo")
     rgi = rasterize(rgi_shapefiles(), g; name="grl_rgi")
 
-    # key numbers for the ice sheet proper (IMBIE regions, without peripheral ice caps)
-    gris = rasterize(imbie_shapefile("GRE"), g; where="SUBREGION1 <> 'ICE_CAP'", name="grl_gris") .> 0
-    numbers = ice_numbers(g, PROJ_GRL, m, H, zb; domain=gris)
+    # key numbers for the ice sheet proper: IMBIE regions without the peripheral ice caps,
+    # with ice outside the polygons (ice shelves, margins) given to the nearest connected region
+    reg = imbie_regions(g, "GRE", "SUBREGION1", ["ICE_CAP"], (m .== 2) .| (m .== 3); others=true, name="grl_regions")
+    numbers = ice_numbers(g, PROJ_GRL, m, H, zb; domain=(reg .== 2))
 
     out = isnan.(m)                                   # outside the BedMachine domain
     zb[out] .= et[out]; zs[out] .= max.(et[out], 0.0)
@@ -205,7 +252,8 @@ function prepare_greenland()
     write_prepared("greenland", g,
         ["z_srf" => (zs, "m"), "z_bed" => (zb, "m"), "u" => (speed(vx, vy), "m/yr"), "mask" => (m, "1")], basin,
         vcat(["sources" => "BedMachine Greenland v6; MEaSUREs NSIDC-0670 v1; ETOPO 2022 30s; RGI 6.0; IMBIE2 basins",
-              "numbers_domain" => "grounded and floating ice inside the IMBIE 2 regions (without ICE_CAP)"], numbers))
+              "numbers_domain" => "grounded and floating ice of the IMBIE 2 regions without ICE_CAP, ice outside " *
+                                  "the regions given to the nearest region connected through ice"], numbers))
     seaice_geojson("greenland", g, "N", ("03", "09"))
     gazetteer_greenland(g)
 end
@@ -221,10 +269,12 @@ function prepare_antarctica()
     m[m .== 4] .= 2                                   # Lake Vostok -> grounded ice
     m[isnan.(m)] .= 0
     numbers = ice_numbers(g, PROJ_ANT, m, H, zb)
-    # East and West Antarctica and the Peninsula (IMBIE 2 regions; the islands are left out)
-    for reg in ("East", "West", "Peninsula")
-        dom = rasterize(imbie_shapefile("ANT"), g; where="Regions = '$reg'", name="ant_$(lowercase(reg))") .> 0
-        append!(numbers, ice_numbers(g, PROJ_ANT, m, H, zb; domain=dom, prefix=lowercase(reg)*"_"))
+    # East and West Antarctica and the Peninsula (IMBIE 2 regions; ice shelves and islands
+    # are given to the nearest region, through connected ice where possible)
+    regions = ["East", "West", "Peninsula"]
+    reg = imbie_regions(g, "ANT", "Regions", regions, (m .== 2) .| (m .== 3); detached=true, name="ant_regions")
+    for (k, r) in enumerate(regions)
+        append!(numbers, ice_numbers(g, PROJ_ANT, m, H, zb; domain=(reg .== k), prefix=lowercase(r)*"_"))
     end
     vel = raw("measures", "antarctica_ice_velocity_450m_v2.nc")
     vx = warp(bm_var(vel, "VX"), g; s_srs=s, name="ant_vx")
@@ -235,7 +285,8 @@ function prepare_antarctica()
         ["z_srf" => (zs, "m"), "z_bed" => (zb, "m"), "u" => (speed(vx, vy), "m/yr"), "mask" => (m, "1")], basin,
         vcat(["sources" => "BedMachine Antarctica v4; MEaSUREs NSIDC-0484 v2; IMBIE2 basins",
               "numbers_domain" => "all grounded and floating ice in BedMachine; east_, west_, peninsula_: " *
-                                  "inside the IMBIE 2 regions"], numbers))
+                                  "IMBIE 2 regions, ice outside them (shelves, islands) given to the nearest region"],
+             numbers))
     seaice_geojson("antarctica", g, "S", ("02", "09"))
     gazetteer_antarctica(g)
 end

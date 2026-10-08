@@ -1,7 +1,8 @@
 plots/prototypes/
-# variants: only the small PNGs are kept
-plots/variants/*
-!plots/variants/*_small.png
+# only the small PNGs are kept; the PDFs and full PNGs are published on the website
+plots/**/*.pdf
+plots/**/*.png
+!plots/**/*_small.png
 .DS_Store
 logs/*.out
 # generated website files (scripts/web.jl, quarto)

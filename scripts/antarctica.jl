@@ -65,7 +65,7 @@ function plot_antarctica(d, style; labels=nothing, maxtier=1, scale=1.85, ocean=
                    extra=vcat([(LineElement(color=(:gray25, 0.8), linewidth=1.2), "Grounding line")], contour_entry, seaice))
     numbers_table!(top[6, 1], d.attrs, [("All", ""), ("East", "east_"), ("West", "west_"), ("Pen.", "peninsula_")];
                    title="Antarctic Ice Sheet in numbers", fontsize=24, halign=:left,
-                   note="East, West, Pen.(insula): grounded ice of the IMBIE 2 regions")
+                   note="East, West, Pen.(insula): IMBIE 2 regions, with ice shelves\nand islands given to the nearest region")
     rowgap!(top, 1, 20); rowgap!(top, 2, 70); rowgap!(top, 3, 20); rowgap!(top, 4, 60); rowgap!(top, 5, 60)
     bottom = side[2, 1] = GridLayout(valign=:bottom, tellheight=false)
     qr_code!(bottom[1, 1]; size=150, fontsize=22, halign=:left)

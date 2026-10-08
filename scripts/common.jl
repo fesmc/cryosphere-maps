@@ -392,8 +392,7 @@ end
 
 """
 Key numbers of the ice sheet and its parts as a table: one column per
-(heading, attribute prefix) in `cols`. Floating area is only given for the
-first column (the parts are the grounded IMBIE regions, see `note`).
+(heading, attribute prefix) in `cols`.
 """
 function numbers_table!(pos, attrs, cols; title="Key numbers", note="", fontsize=24, kw...)
     rows = [("Ice area [10⁶ km²]", "ice_area_km2", 1e6, "%.2f"),
@@ -410,8 +409,8 @@ function numbers_table!(pos, attrs, cols; title="Key numbers", note="", fontsize
         Label(g[i+2, 1], name; fontsize, halign=:left, color=:gray25)
         for (j, (_, pre)) in enumerate(cols)
             v = Float64(attrs[pre*key])/f
-            txt = key == "floating_area_km2" && j > 1 ? "–" : Printf.format(Printf.Format(fmt), v)
-            Label(g[i+2, j+1], txt; fontsize, halign=:right, font=(j == 1 ? :bold : :regular))
+            Label(g[i+2, j+1], Printf.format(Printf.Format(fmt), v); fontsize, halign=:right,
+                  font=(j == 1 ? :bold : :regular))
         end
     end
     isempty(note) || Label(g[length(rows)+3, 1:length(cols)+1], note; fontsize=0.8fontsize, color=:gray40,
