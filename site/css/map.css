@@ -1,0 +1,28 @@
+/* Interactive map pages: map fills the window below the navbar */
+.cryo-map { position: relative; width: 100%; height: calc(100vh - 62px); background: #fff; }
+.cryo-panel {
+  position: absolute; top: 10px; right: 10px; z-index: 10; width: 290px; max-height: calc(100% - 60px);
+  overflow-y: auto; background: rgba(255, 255, 255, 0.93); border-radius: 6px; padding: 10px 12px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25); font-size: 13px;
+}
+.cryo-panel summary { font-weight: 600; margin: 6px 0 2px; cursor: pointer; }
+.cryo-panel label { display: block; margin: 1px 0; }
+.cryo-search { width: 100%; padding: 4px 6px; border: 1px solid #bbb; border-radius: 4px; }
+.cryo-cb-label { margin-top: 6px; }
+.cryo-cb { height: 12px; border: 1px solid #999; }
+.cryo-cb-ticks { position: relative; height: 16px; font-size: 11px; }
+.cryo-cb-ticks span { position: absolute; transform: translateX(-50%); }
+.cryo-line { font-size: 12px; margin-top: 4px; }
+.cryo-numbers td { padding: 1px 4px; }
+.cryo-numbers td:last-child { text-align: right; font-weight: 600; }
+.cryo-popup {
+  background: #fff; border-radius: 5px; padding: 6px 9px; font-size: 13px; max-width: 280px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+}
+.cryo-mouse { position: absolute; bottom: 8px; right: 10px; background: rgba(255, 255, 255, 0.8);
+  padding: 1px 6px; border-radius: 3px; font-size: 12px; }
+.ol-scale-line { left: 10px; bottom: 10px; }
+@media (max-width: 600px) { .cryo-panel { width: calc(100% - 20px); max-height: 45%; } }
+/* the page title is the window title; the map takes the whole page */
+#title-block-header { display: none; }
+main.content { margin: 0; padding: 0; }

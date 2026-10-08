@@ -1,0 +1,12 @@
+---
+title: "Greenland and Antarctic ice-sheet maps"
+---
+
+A0 poster maps of the Greenland and Antarctic ice sheets: surface ice velocity
+over hillshaded topography, with drainage regions, surface contours, the median
+sea-ice edge and place names. Explore the same data on the interactive maps of
+[Greenland](greenland.qmd) and [Antarctica](antarctica.qmd), and see
+[Data & methods](about.qmd) for the sources. The maps are made with Julia and
+CairoMakie; the code is on [GitHub](https://github.com/fesmc/cryosphere-maps).
+
+{{< include _gallery.md >}}

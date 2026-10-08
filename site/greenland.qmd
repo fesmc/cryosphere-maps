@@ -1,0 +1,11 @@
+---
+title: "Greenland Ice Sheet"
+page-layout: custom
+format:
+  html:
+    include-in-header: _map.html
+    include-after-body:
+      text: '<script src="js/map.js"></script>'
+---
+
+<div id="map" class="cryo-map" data-region="greenland"></div>

@@ -1,0 +1,31 @@
+project:
+  type: website
+  output-dir: _site
+  resources:
+    - assets/**
+    - js/**
+    - css/map.css
+
+website:
+  title: "Cryosphere maps"
+  site-url: https://fesmc.github.io/cryosphere-maps/
+  repo-url: https://github.com/fesmc/cryosphere-maps
+  navbar:
+    left:
+      - href: index.qmd
+        text: Posters
+      - href: greenland.qmd
+        text: Greenland
+      - href: antarctica.qmd
+        text: Antarctica
+      - href: about.qmd
+        text: Data & methods
+    right:
+      - icon: github
+        href: https://github.com/fesmc/cryosphere-maps
+
+format:
+  html:
+    theme: cosmo
+    css: css/site.css
+    lightbox: true

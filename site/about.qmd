@@ -1,0 +1,40 @@
+---
+title: "Data & methods"
+---
+
+## Data sources
+
+| Field | Greenland | Antarctica |
+|---|---|---|
+| Bed and surface topography, ice mask, thickness | BedMachine Greenland v6, 150 m (Morlighem et al., 2017) | BedMachine Antarctica v4, 500 m (Morlighem et al., 2020) |
+| Surface ice velocity | MEaSUREs multi-year mosaic, 250 m (Joughin et al., 2018) | MEaSUREs InSAR-based velocity v2, 450 m (Rignot et al., 2011) |
+| Drainage regions | IMBIE 2 (Rignot & Mouginot) | IMBIE 2 (Rignot & Mouginot) |
+| Beyond the BedMachine domain | ETOPO 2022 (NOAA NCEI) and RGI 6.0 glacier outlines | — |
+| Sea-ice edge | Sea Ice Index v4, median 1981–2010 (Fetterer et al., 2017) | Sea Ice Index v4, median 1981–2010 |
+| Place names | GeoNames and a curated list | SCAR Composite Gazetteer of Antarctica and a curated list |
+
+## Methods
+
+All fields are averaged onto the polar stereographic grids of the posters
+(EPSG:3413 at 500 m for Greenland, EPSG:3031 at 1 km for Antarctica) with GDAL.
+The maps combine a hillshade of the ice surface (or the bed) with surface ice
+velocity on a logarithmic colour scale; slow ice fades into the hillshade.
+
+The key numbers are computed on the same grids, with cell areas corrected for
+the distortion of the projection. The sea-level equivalent counts the grounded
+ice above flotation (ice density 917 kg m⁻³, sea water 1027 kg m⁻³ for
+flotation, melt water 1000 kg m⁻³, ocean area 3.625 × 10⁸ km²). For Greenland
+the numbers cover the ice sheet within the IMBIE 2 regions, without the
+peripheral ice caps.
+
+On the interactive maps, the raster layers are pre-rendered tiles of the poster
+styles at the grid resolution. Place names come from the curated label lists of
+the posters; zoom in to see all glacier names of the gazetteers (GeoNames for
+Greenland, glaciers, ice streams, ice shelves and domes of the SCAR gazetteer
+for Antarctica).
+
+## Reproducing the maps
+
+The [repository](https://github.com/fesmc/cryosphere-maps) contains all
+scripts, with the steps to download and prepare the data, plot the posters and
+build this site in its README.
