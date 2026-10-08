@@ -30,6 +30,7 @@ function plot_antarctica(d, style; labels=nothing, maxtier=1, scale=1.85, ocean=
     ix = findall(xi -> xmap[1] <= xi <= xmap[2], r.x); iy = findall(yi -> ymap[1] <= yi <= ymap[2], r.y)
     h = r.dx/2
     image!(ax, (r.x[ix[1]] - h, r.x[ix[end]] + h), (r.y[iy[1]] - h, r.y[iy[end]] + h), img[ix, iy]; interpolate=true)
+    lines!(ax, Rect(xmap[1], ymap[1], xmap[2] - xmap[1], ymap[2] - ymap[1]); color=:black, linewidth=1.5)
     xs = r.x[ix]; ys = r.y[iy]
 
     if contours || style == :surface
@@ -43,10 +44,11 @@ function plot_antarctica(d, style; labels=nothing, maxtier=1, scale=1.85, ocean=
 
     seaice = seaice_edges!(ax, "antarctica", ("09", "02"); ocean)
     graticule!(ax, PROJ_ANT, -80:10:-60, -180:30:150; latrange=(-88, -55), color=(:gray20, 0.4), lw=1.0)
-    scalebar!(ax, xmap[1] + 150, ymap[1] + 150, 1000.0; fontsize=26)
+    scalebar!(ax, xmap[1] + 150, ymap[1] + 200, 1000.0; fontsize=26)
+    url = site_url!(ax, (xmap..., ymap...), kmpp; corner=:left, ocean)
 
     if labels !== nothing
-        draw_labels!(ax, labels, PROJ_ANT; layout=:coastal, kmpp, maxtier, scale,
+        draw_labels!(ax, labels, PROJ_ANT; layout=:coastal, kmpp, maxtier, scale, obstacles=[url],
                      icemask=r.ice, shelfmask=r.shelf, groundedmask=d.grounded, x=r.x, y=r.y, offset=120.0,
                      limits=(xmap..., ymap...), seacolor=seacolor(style, ocean))
     end

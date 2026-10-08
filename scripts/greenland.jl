@@ -54,10 +54,11 @@ function plot_greenland(d, style; labels=nothing, maxtier=1, scale=1.85, ocean=:
     seaice = seaice_edges!(ax, "greenland", ("03", "09"); ocean)
     graticule!(ax, PROJ_GRL, 60:5:80, -80:10:0; latrange=(58, 84), color=(:gray20, 0.4), lw=1.0,
                inside=p -> xl[1] <= p[1] <= xl[2] && ymap[1] <= p[2] <= ymap[2])
-    scalebar!(ax, 700.0, ymap[1] + 60, 400.0; fontsize=26, color=(ocean === :dark ? :white : :black))
+    scalebar!(ax, 700.0, ymap[1] + 110, 400.0; fontsize=26, color=(ocean === :dark ? :white : :black))
+    url = site_url!(ax, (xl..., ymap...), kmpp; ocean)
 
     if labels !== nothing
-        draw_labels!(ax, labels, PROJ_GRL; layout=:coastal, kmpp, maxtier, scale, obstacles=regions,
+        draw_labels!(ax, labels, PROJ_GRL; layout=:coastal, kmpp, maxtier, scale, obstacles=[regions; url],
                      icemask=r.ice, groundedmask=d.grounded, x=r.x, y=r.y, offset=50.0, maxlead=300.0, tmax=120.0,
                      seacolor=seacolor(style, ocean), limits=(xl..., ymap...))
     end

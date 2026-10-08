@@ -419,17 +419,33 @@ function numbers_table!(pos, attrs, cols; title="Key numbers", note="", fontsize
     return g
 end
 
+"Website URL (first line of data/qr_site.txt, see scripts/make_qr.jl), without the scheme."
+site_url() = replace(strip(readline(joinpath(ROOT, "data", "qr_site.txt"))[2:end]), r"^https?://" => "", r"/$" => "")
+
+"""
+Website URL in a bottom corner (`corner` = :right or :left) inside the map with
+`limits` (xmin, xmax, ymin, ymax in km), under the scale bar. Returns its box
+(km), for labels to keep clear of.
+"""
+function site_url!(ax, limits, kmpp; corner=:right, ocean=:light, fontsize=28, margin=15)
+    txt = site_url()
+    p = (corner === :right ? limits[2] - margin*kmpp : limits[1] + margin*kmpp, limits[3] + margin*kmpp)
+    text!(ax, p...; text=txt, fontsize, color=(ocean === :light ? :gray45 : (:white, 0.75)), align=(corner, :bottom))
+    w, h = textbox(txt, fontsize, kmpp)
+    x0 = corner === :right ? p[1] - w : p[1]
+    return (x0, x0 + w, p[2], p[2] + h)
+end
+
 "QR code of the website (data/qr_site.txt, see scripts/make_qr.jl) with a caption."
 function qr_code!(pos; size=170, fontsize=24, kw...)
     ln = readlines(joinpath(ROOT, "data", "qr_site.txt"))
-    url = strip(ln[1][2:end])
     m = permutedims(reduce(hcat, [[c == '1' for c in l] for l in ln[2:end]]))      # rows top to bottom
     n = Base.size(m, 1)
     g = GridLayout(pos; kw...)
     ax = Axis(g[1, 1]; width=size, height=size, aspect=1, limits=(-2, n + 2, -2, n + 2))
     hidedecorations!(ax); hidespines!(ax)
     heatmap!(ax, 0.5:1:n, 0.5:1:n, reverse(permutedims(m), dims=2); colormap=[:white, :black], colorrange=(0, 1))
-    Label(g[2, 1], "Interactive map:\n" * replace(url, r"^https://" => "", r"/$" => ""); fontsize, color=:gray25)
+    Label(g[2, 1], "Interactive map:\n" * site_url(); fontsize, color=:gray25)
     rowgap!(g, 6)
     return g
 end
