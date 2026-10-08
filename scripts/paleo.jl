@@ -29,13 +29,13 @@ const PALEO = Dict(
              lats=30:10:80, lons=-180:30:150, latrange=(25, 88), labels="labels_paleo_nh.csv",
              cols=[("All", ""), ("N.Am.", "namerica_"), ("Grl.", "greenland_"), ("Eur.", "eurasia_")],
              note="N.Am.(erica), Gr(eenl)and, Eur.(asia): approximate regions;\nAll includes Iceland",
-             projection="Polar stereographic projection (70°N, 45°W)."),
+             projection="Polar stereographic projection (70°N, 45°W).", bottom=false),
     "antarctica" => (proj=PROJ_ANT, xmap=(-3040.0, 3040.0), ymap=(-2600.0, 2500.0), title="Antarctic\nIce Sheet",
              lims=STYLE_LIMITS["antarctica"],
              lats=-80:10:-60, lons=-180:30:150, latrange=(-88, -55), labels="labels_antarctica.csv",
              cols=[("All", ""), ("East", "east_"), ("West", "west_"), ("Pen.", "peninsula_")],
              note="East, West, Pen.(insula): IMBIE 2 regions, with ice\ngiven to the nearest region",
-             projection="Polar stereographic projection (71°S, 0°E)."),
+             projection="Polar stereographic projection (71°S, 0°E).", bottom=true),
 )
 
 "Years before present, with a thin space between thousands: 20 -> \"20 000\"."
@@ -88,9 +88,10 @@ function plot_paleo(d, region, t, style; labels=nothing, scale=1.85, ocean=:ligh
 
     graticule!(ax, P.proj, P.lats, P.lons; latrange=P.latrange, color=(:gray20, 0.4), lw=1.0,
                inside=p -> xmap[1] <= p[1] <= xmap[2] && ymap[1] <= p[2] <= ymap[2])
-    scalebar!(ax, xmap[1] + 70kmpp, ymap[1] + 90kmpp, 1000.0; fontsize=26,
+    # scale bar and website in the lower or (NH: over the Pacific) upper left corner
+    scalebar!(ax, xmap[1] + 70kmpp, P.bottom ? ymap[1] + 90kmpp : ymap[2] - 130kmpp, 1000.0; fontsize=26,
               color=(ocean === :dark ? :white : :black))
-    url = site_url!(ax, (xmap..., ymap...), kmpp; corner=:left, ocean)
+    url = site_url!(ax, (xmap..., ymap...), kmpp; corner=:left, P.bottom, ocean)
 
     if labels !== nothing
         draw_labels!(ax, labels, P.proj; layout=:coastal, kmpp, maxtier=1, scale, types=("region", "sea"), obstacles=[url],

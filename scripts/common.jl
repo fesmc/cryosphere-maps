@@ -405,17 +405,20 @@ end
 site_url() = replace(strip(readline(joinpath(ROOT, "data", "qr_site.txt"))[2:end]), r"^https?://" => "", r"/$" => "")
 
 """
-Website URL in a bottom corner (`corner` = :right or :left) inside the map with
-`limits` (xmin, xmax, ymin, ymax in km), under the scale bar. Returns its box
-(km), for labels to keep clear of.
+Website URL in a corner (`corner` = :right or :left; `bottom` or top) inside
+the map with `limits` (xmin, xmax, ymin, ymax in km), next to the scale bar.
+Returns its box (km), for labels to keep clear of.
 """
-function site_url!(ax, limits, kmpp; corner=:right, ocean=:light, fontsize=28, margin=15)
+function site_url!(ax, limits, kmpp; corner=:right, bottom=true, ocean=:light, fontsize=28, margin=15)
     txt = site_url()
-    p = (corner === :right ? limits[2] - margin*kmpp : limits[1] + margin*kmpp, limits[3] + margin*kmpp)
-    text!(ax, p...; text=txt, fontsize, color=(ocean === :light ? :gray45 : (:white, 0.75)), align=(corner, :bottom))
+    p = (corner === :right ? limits[2] - margin*kmpp : limits[1] + margin*kmpp,
+         bottom ? limits[3] + margin*kmpp : limits[4] - margin*kmpp)
+    text!(ax, p...; text=txt, fontsize, color=(ocean === :light ? :gray45 : (:white, 0.75)),
+          align=(corner, bottom ? :bottom : :top))
     w, h = textbox(txt, fontsize, kmpp)
     x0 = corner === :right ? p[1] - w : p[1]
-    return (x0, x0 + w, p[2], p[2] + h)
+    y0 = bottom ? p[2] : p[2] - h
+    return (x0, x0 + w, y0, y0 + h)
 end
 
 "QR code of the website (data/qr_site.txt, see scripts/make_qr.jl) with a caption."
