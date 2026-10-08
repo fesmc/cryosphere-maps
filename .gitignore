@@ -1,4 +1,11 @@
 plots/prototypes/
+# variants: only the small PNGs are kept
+plots/variants/*
+!plots/variants/*_small.png
 .DS_Store
 logs/*.out
-*_draft.png
+# generated website files (scripts/web.jl, quarto)
+site/_site/
+site/.quarto/
+site/assets/
+site/_gallery.md

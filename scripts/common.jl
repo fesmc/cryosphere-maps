@@ -1,41 +1,11 @@
 # Shared tools for ice-sheet poster maps (projection, shading, labels).
 
-using CairoMakie, NCDatasets, ColorSchemes, Colors, DelimitedFiles, Statistics
+using CairoMakie, NCDatasets, ColorSchemes, Colors, DelimitedFiles, Statistics, Unicode, Printf
+import JSON
 import Contour as CT
 
 include("paths.jl")
-
-# ---------------------------------------------------------------------------
-# Projection: ellipsoidal polar stereographic (Snyder 1987), output in km
-# ---------------------------------------------------------------------------
-
-struct PolarStereo
-    lon0::Float64     # straight vertical longitude from pole [deg]
-    lat_ts::Float64   # latitude of true scale [deg] (sign gives hemisphere)
-end
-
-const WGS84_A = 6378137.0
-const WGS84_E = 0.0818191908426
-
-function _tfun(φ, e)
-    return tan(π/4 - φ/2) / ((1 - e*sin(φ)) / (1 + e*sin(φ)))^(e/2)
-end
-
-function project(p::PolarStereo, lon, lat)
-    s  = sign(p.lat_ts)                  # +1 north, -1 south
-    φ  = deg2rad(s*lat)
-    φc = deg2rad(s*p.lat_ts)
-    λ  = deg2rad(s*(lon - p.lon0))
-    e  = WGS84_E
-    mc = cos(φc) / sqrt(1 - e^2*sin(φc)^2)
-    ρ  = WGS84_A * mc * _tfun(φ, e) / _tfun(φc, e)
-    x  =  ρ*sin(λ)
-    y  = -ρ*cos(λ)
-    return (s*x/1e3, s*y/1e3)
-end
-
-const PROJ_GRL = PolarStereo(-45.0, 70.0)
-const PROJ_ANT = PolarStereo(0.0, -71.0)
+include("projection.jl")
 
 # ---------------------------------------------------------------------------
 # Data helpers
@@ -149,16 +119,18 @@ function contour_points(x, y, z, levels; mask=nothing)
     return pts
 end
 
-contourlines!(ax, x, y, z, levels; mask=nothing, kw...) = lines!(ax, contour_points(x, y, z, levels; mask); kw...)
+
+"Surface-elevation contours over `mask`, from a surface smoothed by `σkm` (vertices, NaN-separated)."
+elevation_contour_points(x, y, zs, mask, levels; σkm=2.0) =
+    contour_points(x, y, gauss_smooth(zs, σkm/(x[2] - x[1])), levels; mask)
 
 "Thin surface-elevation contours over `mask`, from a surface smoothed by `σkm`."
-function elevation_contours!(ax, x, y, zs, mask, levels; σkm=2.0, color=(:gray20, 0.7), linewidth=0.9)
-    zz = gauss_smooth(zs, σkm/(x[2] - x[1]))
-    contourlines!(ax, x, y, zz, levels; mask, color, linewidth)
-end
+elevation_contours!(ax, x, y, zs, mask, levels; σkm=2.0, color=(:gray20, 0.7), linewidth=0.9) =
+    lines!(ax, elevation_contour_points(x, y, zs, mask, levels; σkm); color, linewidth)
 
-"Smoothed outline of a boolean mask."
-maskoutline!(ax, x, y, m; σ=0.7, kw...) = contourlines!(ax, x, y, gauss_smooth(Float64.(m), σ), [0.5]; kw...)
+"Smoothed outline of a boolean mask (vertices, NaN-separated); `mask` limits where it is drawn."
+maskoutline_points(x, y, m; σ=0.7, mask=nothing) = contour_points(x, y, gauss_smooth(Float64.(m), σ), [0.5]; mask)
+maskoutline!(ax, x, y, m; σ=0.7, mask=nothing, kw...) = lines!(ax, maskoutline_points(x, y, m; σ, mask); kw...)
 
 # ---------------------------------------------------------------------------
 # Map furniture
@@ -188,15 +160,17 @@ function scalebar!(ax, x0, y0, len; segs=4, h=len/40, fontsize=14, color=:black)
     text!(ax, x0 + len, y0 + 1.8h; text="$(round(Int, len)) km", fontsize, color, align=(:center, :bottom))
 end
 
-"Contour lines of the interfaces between integer basin ids, drawn only over ice."
-function basin_divides!(ax, x, y, basin, icemask; σ=1.0, color=(:black, 0.55), lw=1.0, linestyle=:solid)
-    ids = sort(unique(filter(>(0), basin)))
-    for id in ids
-        ind = Float64.(basin .== id)
-        ind = gauss_smooth(ind, σ)
-        contourlines!(ax, x, y, ind, [0.5]; mask=icemask, color=color, linewidth=lw, linestyle=linestyle)
+"Interfaces between integer basin ids over `icemask` (vertices, NaN-separated)."
+function basin_divide_points(x, y, basin, icemask; σ=1.0)
+    pts = Point2f[]
+    for id in sort(unique(filter(>(0), basin)))
+        append!(pts, contour_points(x, y, gauss_smooth(Float64.(basin .== id), σ), [0.5]; mask=icemask))
     end
+    return pts
 end
+
+basin_divides!(ax, x, y, basin, icemask; σ=1.0, color=(:black, 0.55), lw=1.0, linestyle=:solid) =
+    lines!(ax, basin_divide_points(x, y, basin, icemask; σ); color, linewidth=lw, linestyle)
 
 # ---------------------------------------------------------------------------
 # Raster composition for the three styles
@@ -230,20 +204,19 @@ function raster_fields(x, y, zs, zb, mask, u; dx, zfac_ice=40, zfac_bed=6)
 end
 
 """
-Read a prepared poster grid (scripts/prepare.jl), every `stride`-th node (the
-basin grid spacing must stay a multiple of the result). Returns the raster fields and,
-on the basin grid, the basin ids with a matching coarse ice mask.
+Read a prepared poster grid (scripts/prepare.jl): the full-resolution grid in
+\$CRYOMAPS_DATA (`full=true`), or its copy at every DRAFT_STRIDE-th node in the
+repo. Returns the raster fields, the basin ids on the coarser basin grid with
+matching coarse masks, and the global attributes (incl. the key numbers).
 """
-function load_prepared(region; zfac_ice, zfac_bed=6, stride=1)
-    f = prepared_file(region)
+function load_prepared(region; zfac_ice=40, zfac_bed=6, full=false)
+    f = full ? prepared_file(region) : draft_file(region)
     isfile(f) || error("missing $f: run steps 0-1 (see README)")
-    # stride > 1: fast low-resolution drafts (subsample in memory; strided reads of
-    # compressed netCDF are very slow)
-    rd(v) = readvar(f, v)[1:stride:end, 1:stride:end]
-    x = readaxis(f, "x")[1:stride:end]; y = readaxis(f, "y")[1:stride:end]
+    x = readaxis(f, "x"); y = readaxis(f, "y")
     xb = readaxis(f, "xb"); yb = readaxis(f, "yb")
-    mask = NCDataset(ds -> Int.(ds["mask"][:, :]), f)[1:stride:end, 1:stride:end]
-    r = raster_fields(x, y, rd("z_srf"), rd("z_bed"), mask, rd("u"); dx=x[2] - x[1], zfac_ice, zfac_bed)
+    mask = NCDataset(ds -> Int.(ds["mask"][:, :]), f)
+    r = raster_fields(x, y, readvar(f, "z_srf"), readvar(f, "z_bed"), mask, readvar(f, "u");
+                      dx=x[2] - x[1], zfac_ice, zfac_bed)
     st = round(Int, (xb[2] - xb[1])/(x[2] - x[1]))       # basin grid nodes are every st-th node
     basin, basin_names = NCDataset(ds -> (Int.(ds["basin"][:, :]), split(ds["basin"].attrib["names"], ",")), f)
     return (; r, xb, yb, basin, basin_names, grounded_b=(mask[1:st:end, 1:st:end] .== 2), ice_b=(mask[1:st:end, 1:st:end] .>= 2),
@@ -289,20 +262,28 @@ function compose(style, r; srflim=(0, 3300), bedlim=(-2000, 3000), oceanlim=(-45
     return img
 end
 
-"""
-Label each basin over ice with its name, at the in-basin point nearest its
-centroid. Returns the label boxes (km) so place-name labels can avoid them.
-"""
-function basin_labels!(ax, x, y, basin, names, icemask; kmpp, fontsize=16, color=:gray20)
-    boxes = Tuple[]
+"Label point of each basin over ice: the in-basin point nearest its centroid. Returns (name, (x, y)) pairs."
+function basin_label_points(x, y, basin, names, icemask)
+    out = Tuple{String, Tuple{Float64, Float64}}[]
     for id in sort(unique(filter(>(0), basin[icemask])))
         I = findall((basin .== id) .& icemask)
         length(I) < 30 && continue
         cx = mean(x[c[1]] for c in I); cy = mean(y[c[2]] for c in I)
         k = argmin([hypot(x[c[1]] - cx, y[c[2]] - cy) for c in I])
-        p = (x[I[k][1]], y[I[k][2]])
-        halotext!(ax, p[1], p[2]; text=names[id], fontsize, color, font=:bold, align=(:center, :center))
-        push!(boxes, boxat(p, textbox(names[id], fontsize, kmpp; font=:bold), :center))
+        push!(out, (String(names[id]), (x[I[k][1]], y[I[k][2]])))
+    end
+    return out
+end
+
+"""
+Label each basin over ice with its name (see basin_label_points). Returns the
+label boxes (km) so place-name labels can avoid them.
+"""
+function basin_labels!(ax, x, y, basin, names, icemask; kmpp, fontsize=16, color=:gray20)
+    boxes = Tuple[]
+    for (name, p) in basin_label_points(x, y, basin, names, icemask)
+        halotext!(ax, p[1], p[2]; text=name, fontsize, color, font=:bold, align=(:center, :center))
+        push!(boxes, boxat(p, textbox(name, fontsize, kmpp; font=:bold), :center))
     end
     return boxes
 end
@@ -327,8 +308,85 @@ function style_colorbar!(pos, style; bedlim=(-1.5, 3.0), srflim=(0, 3.3), velcma
     end
 end
 
+"Ocean colour scale (depth in m) for the light or dark ocean."
+function ocean_colorbar!(pos, ocean; oceanlim=(-4500, 0), kw...)
+    cs = ocean === :light ? CS_OCEAN_LIGHT : CS_OCEAN
+    Colorbar(pos; colormap=reverse(cs), limits=(0, -oceanlim[1]), ticks=0:1000:-oceanlim[1],
+             label="Ocean depth [m]", kw...)
+end
+
+# ---------------------------------------------------------------------------
+# Sea-ice edge, key numbers, QR code
+# ---------------------------------------------------------------------------
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September",
+                "October", "November", "December"]
+
+"Line vertices (km, NaN-separated) of a GeoJSON file of (multi)line strings in metres."
+function geojson_lines(path)
+    pts = Point2f[]
+    for f in JSON.parsefile(path)["features"]
+        g = f["geometry"]; g === nothing && continue
+        parts = g["type"] == "LineString" ? [g["coordinates"]] : g["coordinates"]
+        for ln in parts
+            append!(pts, [Point2f(c[1]/1e3, c[2]/1e3) for c in ln]); push!(pts, Point2f(NaN, NaN))
+        end
+    end
+    return pts
+end
+
+"""
+Median sea-ice edges (1981-2010) for `months` ("MM", winter maximum first),
+dashed for the maximum and dotted for the minimum. Returns legend entries.
+"""
+function seaice_edges!(ax, region, months; ocean=:light, linewidth=2.5)
+    col = ocean === :light ? (colorant"#1d4e89", 0.8) : (colorant"#7cc8f5", 0.9)    # visible on map and legend
+    entries = []
+    for (mm, ls) in zip(months, (:dash, :dot))
+        f = joinpath(REPO_PREP_DIR, "seaice_$(region)_$(mm).geojson")
+        lines!(ax, geojson_lines(f); color=col, linewidth, linestyle=ls)
+        push!(entries, (LineElement(; color=col, linewidth, linestyle=ls),
+                        "Sea-ice edge, $(MONTHS[parse(Int, mm)])"))
+    end
+    return entries
+end
+
+"Key numbers of the ice sheet (from prepare.jl) as a two-column table."
+function numbers_box!(pos, attrs; title="Key numbers", fontsize=28, kw...)
+    a(k) = Float64(attrs[k])
+    rows = ["Ice area"             => @sprintf("%.2f million km²", a("ice_area_km2")/1e6),
+            "   of which floating" => @sprintf("%.2f million km²", a("floating_area_km2")/1e6),
+            "Ice volume"           => @sprintf("%.2f million km³", a("ice_volume_km3")/1e6),
+            "Maximum thickness"    => @sprintf("%.0f m", a("max_thickness_m")),
+            "Sea-level equivalent" => @sprintf("%.1f m", a("sea_level_equivalent_m"))]
+    a("floating_area_km2") < 1e4 && deleteat!(rows, 2)
+    g = GridLayout(pos; kw...)
+    Label(g[1, 1:2], title; fontsize=1.15fontsize, font=:bold, halign=:left)
+    for (i, (k, v)) in enumerate(rows)
+        Label(g[i+1, 1], k; fontsize, halign=:left, color=:gray25)
+        Label(g[i+1, 2], v; fontsize, halign=:right, font=:bold)
+    end
+    colgap!(g, 30); rowgap!(g, 4)
+    return g
+end
+
+"QR code of the website (data/qr_site.txt, see scripts/make_qr.jl) with a caption."
+function qr_code!(pos; size=170, fontsize=24, kw...)
+    ln = readlines(joinpath(ROOT, "data", "qr_site.txt"))
+    url = strip(ln[1][2:end])
+    m = permutedims(reduce(hcat, [[c == '1' for c in l] for l in ln[2:end]]))      # rows top to bottom
+    n = Base.size(m, 1)
+    g = GridLayout(pos; kw...)
+    ax = Axis(g[1, 1]; width=size, height=size, aspect=1, limits=(-2, n + 2, -2, n + 2))
+    hidedecorations!(ax); hidespines!(ax)
+    heatmap!(ax, 0.5:1:n, 0.5:1:n, reverse(permutedims(m), dims=2); colormap=[:white, :black], colorrange=(0, 1))
+    Label(g[2, 1], "Interactive map:\n" * replace(url, r"^https://" => "", r"/$" => ""); fontsize, color=:gray25)
+    rowgap!(g, 6)
+    return g
+end
+
 "Legend of map symbols. `extra` adds (element, label) pairs."
-function symbol_legend!(pos; scale=1.5, domes=true, extra=[], kw...)
+function symbol_legend!(pos; scale=1.5, domes=true, extra=[], rowgap=6, kw...)
     ms = 8*scale*1.6
     els = Any[MarkerElement(marker=:diamond, color=:darkred, strokecolor=:white, markersize=ms),
               MarkerElement(marker=:circle, color=:black, strokecolor=:white, markersize=ms)]
@@ -341,44 +399,79 @@ function symbol_legend!(pos; scale=1.5, domes=true, extra=[], kw...)
     for (e, l) in extra
         push!(els, e); push!(labs, l)
     end
-    Legend(pos, els, labs; framevisible=false, rowgap=6, patchsize=(40, 20), kw...)
+    Legend(pos, els, labs; framevisible=false, rowgap, patchsize=(40, 20), kw...)
 end
 
 """
-Save the poster: PDF at true size (1 unit = 1 pt), a PNG preview at `dpi_png`,
-and a small PNG for sharing with `small_px` pixels on the long edge.
-A draft saves only the PNG preview.
+Save the poster as a small PNG for sharing (`small_px` pixels on the long
+edge) and, with `full`, also as a PDF at true size (1 unit = 1 pt) and a PNG
+preview at `dpi_png`.
 """
-function save_poster(fig, out; dpi_png=100, small_px=1600, draft=false)
-    if draft
+function save_poster(fig, out; full=false, dpi_png=100, small_px=1600)
+    mkpath(dirname(out))
+    if full
+        save(out*".pdf", fig; pt_per_unit=1)
         save(out*".png", fig; px_per_unit=dpi_png/72)
-        println("saved ", out, ".png"); return
     end
-    save(out*".pdf", fig; pt_per_unit=1)
-    save(out*".png", fig; px_per_unit=dpi_png/72)
     save(out*"_small.png", fig; px_per_unit=small_px/maximum(size(fig.scene)))
-    println("saved ", out, ".{pdf,png} and ", basename(out), "_small.png")
+    println("saved ", out, full ? ".{pdf,png} and _small.png" : "_small.png")
 end
 
 """
-Command-line options: a raster style (velocity|surface|bed) and flags
-`dark` (dark ocean), `nocontours`, `cmap=<name>` (velocity colour map, see
-VEL_CMAPS) and `draft` (every 4th grid node, PNG only; fast enough for the
-login node). Non-default options are added to the output name.
+Command-line options:
+- a raster style: velocity (default) | surface | bed
+- `dark`: dark ocean; `nocontours`: no surface contours
+- `cmap=<name>`: velocity colour map (see VEL_CMAPS)
+- `tier=2`: also show the tier-2 names of the label CSV
+- `add=<name>;<name>...`: add names from the label CSV or the gazetteer
+- `list` or `list=<text>`: print the available names (matching <text>) and exit
+- `full`: full-resolution grid (\$CRYOMAPS_DATA) and PDF + PNG output; without
+  it, only the small PNG is made from the coarse grid in data/prepared.
 """
 function parse_args(args)
+    val(key) = (i = findfirst(startswith(key*"="), args); i === nothing ? nothing : split(args[i], "="; limit=2)[2])
+    known = ("velocity", "surface", "bed", "dark", "nocontours", "full", "list")
+    for a in args
+        a in known || any(startswith(a, k*"=") for k in ("cmap", "tier", "add", "list")) || error("unknown option $a")
+    end
     i = findfirst(in(("velocity", "surface", "bed")), args)
     style = Symbol(i === nothing ? "velocity" : args[i])
     ocean = "dark" in args ? :dark : :light
     contours = !("nocontours" in args)
-    c = findfirst(startswith("cmap="), args)
-    cmapname = c === nothing ? :classic : Symbol(split(args[c], "=")[2])
+    cmapname = Symbol(something(val("cmap"), "classic"))
     haskey(VEL_CMAPS, cmapname) || error("unknown cmap $cmapname; options: $(keys(VEL_CMAPS))")
-    draft = "draft" in args
+    tier = parse(Int, something(val("tier"), "1"))
+    tier in (1, 2) || error("tier must be 1 or 2; add gazetteer names with add=<name>")
+    add = filter(!isempty, strip.(split(something(val("add"), ""), ";")))
+    list = "list" in args ? "" : val("list")
     tag = join(filter(!isempty, [ocean === :dark ? "dark" : "", contours ? "" : "nocontours",
-                                 cmapname === :classic ? "" : String(cmapname), draft ? "draft" : ""]), "_")
-    return (; style, ocean, contours, velcmap=VEL_CMAPS[cmapname], stride=(draft ? 4 : 1), draft,
+                                 cmapname === :classic ? "" : String(cmapname), tier == 1 ? "" : "tier$tier",
+                                 isempty(add) ? "" : "custom"]), "_")
+    return (; style, ocean, contours, velcmap=VEL_CMAPS[cmapname], tier, add, list, full="full" in args,
               tag=isempty(tag) ? "" : "_"*tag)
+end
+
+"Output path (without extension): the default poster in plots/, all others in plots/variants/."
+function poster_path(region, o)
+    name = "$(region)_A0_$(o.style)$(o.tag)"
+    return o.style === :velocity && isempty(o.tag) ? joinpath(ROOT, "plots", name) : joinpath(ROOT, "plots", "variants", name)
+end
+
+"""
+Command-line entry point of the poster scripts: `plotfun(d, style; labels,
+maxtier, ocean, contours, velcmap)` draws the poster of `region`.
+"""
+function main_poster(region, plotfun, args=ARGS)
+    o = parse_args(args)
+    labs = read_labels(joinpath(ROOT, "data", "labels_$(region).csv"))
+    gaz  = read_labels(joinpath(REPO_PREP_DIR, "gazetteer_$(region).csv"))
+    if o.list !== nothing
+        list_names(vcat(labs, gaz), o.list); return
+    end
+    labs = add_names(labs, gaz, o.add)
+    d = load_prepared(region; o.full)
+    fig = plotfun(d, o.style; labels=labs, maxtier=o.tier, o.ocean, o.contours, o.velcmap)
+    save_poster(fig, poster_path(region, o); o.full)
 end
 
 include("labels.jl")

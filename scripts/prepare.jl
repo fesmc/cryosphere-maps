@@ -4,13 +4,20 @@
 # Output: $CRYOMAPS_DATA/prepared/<region>_<res>m.nc with, on the poster grid,
 #   z_srf, z_bed [m], u [m/yr], mask (0 ocean, 1 ice-free land, 2 grounded ice, 3 floating ice)
 # and, on the coarser basin grid (xb, yb), basin (integer id, 0 = none; names in
-# the `names` attribute).
+# the `names` attribute). Key numbers of the ice sheet (area, volume, sea-level
+# equivalent) are stored as global attributes.
+#
+# Small derived files go to data/prepared/ in the repo:
+#   <region>_<4 x res>m.nc         the same grid at every 4th node (for quick plots)
+#   gazetteer_<region>.csv         ice-feature names from GeoNames / SCAR CGA
+#   seaice_<region>_<MM>.geojson   median sea-ice edge 1981-2010 for month MM
 #
 # Usage: julia --project=. scripts/prepare.jl [greenland] [antarctica]
 # Takes ~2 min and <3 GB on albedo (jobs/prepare.sh).
 
-using NCDatasets, GDAL_jll, PROJ_jll
+using NCDatasets, GDAL_jll, PROJ_jll, DelimitedFiles
 include("paths.jl")
+include("projection.jl")
 
 const TMP = joinpath(PREP_DIR, "tmp")
 
@@ -46,15 +53,19 @@ function read_gdal_nc(f)
     end
 end
 
-"Rasterise polygons of vector file(s) `src` onto grid `g`, burning value `burn`."
-function rasterize(src, g; dx=g.dx, burn=1, name="rasterized")
+"""
+Rasterise polygons of vector file(s) `src` onto grid `g`, burning value `burn`;
+`where` is an optional attribute filter (OGR SQL).
+"""
+function rasterize(src, g; dx=g.dx, burn=1, name="rasterized", where=nothing)
     mkpath(TMP)
     reproj = joinpath(TMP, "$(name).gpkg")
     out = joinpath(TMP, "$(name).nc")
     srcs = src isa AbstractVector ? src : [src]
     rm(reproj; force=true)
+    filt = where === nothing ? `` : `-where $where`
     for s in srcs
-        run(`$(ogr2ogr_exe()) -q -t_srs EPSG:$(g.epsg) -append -nln layer -nlt PROMOTE_TO_MULTI $reproj $s`)
+        run(`$(ogr2ogr_exe()) -q -t_srs EPSG:$(g.epsg) $filt -append -nln layer -nlt PROMOTE_TO_MULTI $reproj $s`)
     end
     te = extent(g; dx)
     run(`$(gdal_rasterize_exe()) -q -burn $burn -l layer -te $(te[1]) $(te[2]) $(te[3]) $(te[4]) -tr $(1e3dx) $(1e3dx)
@@ -83,9 +94,22 @@ end
 
 axes_km(g; dx=g.dx) = (collect(g.x[1]:dx:g.x[2]), collect(g.y[1]:dx:g.y[2]))
 
-function write_prepared(region, g, fields, (basin, basin_names), attrs)
+"""
+Write the poster grid of `region` to \$CRYOMAPS_DATA/prepared and a copy at every
+DRAFT_STRIDE-th node to data/prepared in the repo.
+"""
+function write_prepared(region, g, fields, basin, attrs)
     x, y = axes_km(g); xb, yb = axes_km(g; dx=g.dxb)
-    out = prepared_file(region)
+    write_grids(prepared_file(region), x, y, xb, yb, fields, basin,
+                vcat(attrs, ["grid" => "EPSG:$(g.epsg), $(g.dx) km (basins $(g.dxb) km)"]))
+    s = DRAFT_STRIDE
+    write_grids(draft_file(region), x[1:s:end], y[1:s:end], xb, yb,
+                [k => (v[1:s:end, 1:s:end], u) for (k, (v, u)) in fields], basin,
+                vcat(attrs, ["grid" => "EPSG:$(g.epsg), $(s*g.dx) km (basins $(g.dxb) km)",
+                             "draft" => "every $(s)th node of $(basename(prepared_file(region)))"]))
+end
+
+function write_grids(out, x, y, xb, yb, fields, (basin, basin_names), attrs)
     mkpath(dirname(out)); rm(out; force=true)
     NCDataset(out, "c") do ds
         defVar(ds, "x", x, ("x",); attrib=["units" => "km"])
@@ -99,12 +123,49 @@ function write_prepared(region, g, fields, (basin, basin_names), attrs)
         end
         defVar(ds, "basin", Int16.(basin), ("xb", "yb"); deflatelevel=4,
                attrib=["units" => "1", "names" => join(basin_names, ",")])
-        ds.attrib["grid"] = "EPSG:$(g.epsg), $(g.dx) km (basins $(g.dxb) km)"
         for (k, v) in attrs
             ds.attrib[k] = v
         end
     end
     println("wrote ", out)
+end
+
+# ---------------------------------------------------------------------------
+# Key numbers
+# ---------------------------------------------------------------------------
+
+const RHO_ICE    = 917.0       # kg/m³
+const RHO_SEA    = 1027.0      # kg/m³, for flotation
+const RHO_FRESH  = 1000.0      # kg/m³, melt water volume added to the ocean
+const OCEAN_AREA = 3.625e14    # m²
+
+"""
+Key numbers of the ice (mask 2 or 3) inside `domain`: area, floating area,
+volume, maximum thickness and the sea-level equivalent of the grounded ice
+above flotation. Cell areas are corrected for the scale distortion of `proj`.
+"""
+function ice_numbers(g, proj, mask, H, zb; domain=trues(size(mask)))
+    x, y = axes_km(g); a0 = (1e3*g.dx)^2
+    area = afl = vol = vaf = hmax = 0.0
+    for j in eachindex(y), i in eachindex(x)
+        (domain[i, j] && (mask[i, j] == 2 || mask[i, j] == 3)) || continue
+        a = a0 / scale_factor(proj, x[i], y[j])^2
+        h = isnan(H[i, j]) ? 0.0 : H[i, j]
+        area += a; vol += a*h; hmax = max(hmax, h)
+        if mask[i, j] == 3
+            afl += a
+        elseif !isnan(zb[i, j])
+            vaf += a*max(0.0, h - max(0.0, -zb[i, j])*RHO_SEA/RHO_ICE)
+        end
+    end
+    sle = vaf*RHO_ICE/(RHO_FRESH*OCEAN_AREA)
+    println("  area $(round(area/1e12, digits=3)) Mkm², volume $(round(vol/1e15, digits=3)) Mkm³, ",
+            "SLE $(round(sle, digits=2)) m, max thickness $(round(Int, hmax)) m")
+    return ["ice_area_km2" => area/1e6, "floating_area_km2" => afl/1e6, "ice_volume_km3" => vol/1e9,
+            "sea_level_equivalent_m" => sle, "max_thickness_m" => hmax,
+            "numbers_note" => "on the poster grid; SLE of grounded ice above flotation with " *
+                              "rho_ice = $RHO_ICE, rho_sea = $RHO_SEA (flotation), rho_fresh = $RHO_FRESH kg/m3, " *
+                              "ocean area $(OCEAN_AREA/1e6) km2"]
 end
 
 speed(vx, vy) = hypot.(vx, vy)
@@ -121,12 +182,17 @@ function prepare_greenland()
     bm = raw("bedmachine", "BedMachineGreenland-v6.nc")
     zs = warp(bm_var(bm, "surface"), g; s_srs=s, name="grl_surface")
     zb = warp(bm_var(bm, "bed"), g; s_srs=s, name="grl_bed")
+    H  = warp(bm_var(bm, "thickness"), g; s_srs=s, name="grl_thickness")
     m  = warp(bm_var(bm, "mask"), g; s_srs=s, resample="mode", name="grl_mask")
     vx = warp(raw("measures", "greenland_vel_mosaic250_vx_v1.tif"), g; s_srs=s, name="grl_vx")
     vy = warp(raw("measures", "greenland_vel_mosaic250_vy_v1.tif"), g; s_srs=s, name="grl_vy")
     et = warp(bm_var(raw("etopo", "ETOPO2022_30s_greenland_subset.nc"), "z"), g;
               s_srs="EPSG:4326", resample="bilinear", name="grl_etopo")
     rgi = rasterize(rgi_shapefiles(), g; name="grl_rgi")
+
+    # key numbers for the ice sheet proper (IMBIE regions, without peripheral ice caps)
+    gris = rasterize(imbie_shapefile("GRE"), g; where="SUBREGION1 <> 'ICE_CAP'", name="grl_gris") .> 0
+    numbers = ice_numbers(g, PROJ_GRL, m, H, zb; domain=gris)
 
     out = isnan.(m)                                   # outside the BedMachine domain
     zb[out] .= et[out]; zs[out] .= max.(et[out], 0.0)
@@ -136,7 +202,10 @@ function prepare_greenland()
     basin = rasterize_basins(imbie_shapefile("GRE"), g, "SUBREGION1"; exclude=["ICE_CAP"], name="grl_basin")
     write_prepared("greenland", g,
         ["z_srf" => (zs, "m"), "z_bed" => (zb, "m"), "u" => (speed(vx, vy), "m/yr"), "mask" => (m, "1")], basin,
-        ["sources" => "BedMachine Greenland v6; MEaSUREs NSIDC-0670 v1; ETOPO 2022 30s; RGI 6.0; IMBIE2 basins"])
+        vcat(["sources" => "BedMachine Greenland v6; MEaSUREs NSIDC-0670 v1; ETOPO 2022 30s; RGI 6.0; IMBIE2 basins",
+              "numbers_domain" => "grounded and floating ice inside the IMBIE 2 regions (without ICE_CAP)"], numbers))
+    seaice_geojson("greenland", g, "N", ("03", "09"))
+    gazetteer_greenland(g)
 end
 
 "Antarctica: BedMachine v4, MEaSUREs velocity v2 (NSIDC-0484), IMBIE2 basins."
@@ -145,9 +214,11 @@ function prepare_antarctica()
     bm = raw("bedmachine", "NSIDC-0756_BedMachineAntarctica_19700101-20191001_V04.1.nc")
     zs = warp(bm_var(bm, "surface"), g; s_srs=s, name="ant_surface")
     zb = warp(bm_var(bm, "bed"), g; s_srs=s, name="ant_bed")
+    H  = warp(bm_var(bm, "thickness"), g; s_srs=s, name="ant_thickness")
     m  = warp(bm_var(bm, "mask"), g; s_srs=s, resample="mode", name="ant_mask")
     m[m .== 4] .= 2                                   # Lake Vostok -> grounded ice
     m[isnan.(m)] .= 0
+    numbers = ice_numbers(g, PROJ_ANT, m, H, zb)
     vel = raw("measures", "antarctica_ice_velocity_450m_v2.nc")
     vx = warp(bm_var(vel, "VX"), g; s_srs=s, name="ant_vx")
     vy = warp(bm_var(vel, "VY"), g; s_srs=s, name="ant_vy")
@@ -155,7 +226,91 @@ function prepare_antarctica()
     basin = rasterize_basins(imbie_shapefile("ANT"), g, "Subregion"; name="ant_basin")
     write_prepared("antarctica", g,
         ["z_srf" => (zs, "m"), "z_bed" => (zb, "m"), "u" => (speed(vx, vy), "m/yr"), "mask" => (m, "1")], basin,
-        ["sources" => "BedMachine Antarctica v4; MEaSUREs NSIDC-0484 v2; IMBIE2 basins"])
+        vcat(["sources" => "BedMachine Antarctica v4; MEaSUREs NSIDC-0484 v2; IMBIE2 basins",
+              "numbers_domain" => "all grounded and floating ice in BedMachine"], numbers))
+    seaice_geojson("antarctica", g, "S", ("02", "09"))
+    gazetteer_antarctica(g)
+end
+
+# ---------------------------------------------------------------------------
+# Sea-ice edges and gazetteers (small; written to data/prepared in the repo)
+# ---------------------------------------------------------------------------
+
+"Median sea-ice edge (1981-2010) for the given months, reprojected and clipped to grid `g`."
+function seaice_geojson(region, g, hemi, months)
+    for mm in months
+        dir = raw("seaice", "median_extent_$(hemi)_$(mm)_1981-2010_polyline_v4.0")
+        shp = only(filter(endswith(".shp"), readdir(dir; join=true)))
+        out = joinpath(REPO_PREP_DIR, "seaice_$(region)_$(mm).geojson")
+        mkpath(dirname(out)); rm(out; force=true)
+        te = extent(g)
+        run(`$(ogr2ogr_exe()) -q -f GeoJSON -t_srs EPSG:$(g.epsg) -clipdst $(te[1]) $(te[2]) $(te[3]) $(te[4])
+             -simplify 2000 -lco COORDINATE_PRECISION=0 $out $shp`)
+        println("wrote ", out)
+    end
+end
+
+"Is (lon, lat) inside grid `g`?"
+inside(g, proj, lon, lat) = ((x, y) = project(proj, lon, lat); g.x[1] <= x <= g.x[2] && g.y[1] <= y <= g.y[2])
+
+"""
+Write a gazetteer CSV with columns name, lat, lon, type, source, tier (3 =
+gazetteer), alt (other names, separated by |).
+"""
+function write_gazetteer(region, rows)
+    out = joinpath(REPO_PREP_DIR, "gazetteer_$(region).csv")
+    mkpath(dirname(out))
+    sort!(rows; by=r -> r[1])
+    q(s) = occursin(r"[,\"]", s) ? "\"" * replace(s, "\"" => "\"\"") * "\"" : s
+    open(out, "w") do io
+        println(io, "name,lat,lon,type,source,tier,alt")
+        for (name, lat, lon, type, src, alt) in rows
+            println(io, join([q(name), round(lat, digits=4), round(lon, digits=4), type, q(src), 3, q(alt)], ","))
+        end
+    end
+    println("wrote ", out, " (", length(rows), " names)")
+end
+
+"Greenland glaciers from GeoNames (feature code GLCR)."
+function gazetteer_greenland(g)
+    d = readdlm(raw("geonames", "GL", "GL.txt"), '\t', Any; quotes=false)
+    rows = []
+    for r in eachrow(d)
+        r[8] == "GLCR" || continue
+        lat, lon = Float64(r[5]), Float64(r[6])
+        inside(g, PROJ_GRL, lon, lat) || continue
+        alt = filter(a -> a != r[2], unique(split(string(r[4]), ",")))
+        push!(rows, (string(r[2]), lat, lon, "glacier", "GeoNames $(r[1])", join(filter(!isempty, alt), "|")))
+    end
+    write_gazetteer("greenland", rows)
+end
+
+# SCAR CGA feature types kept, and the label type they map to
+const CGA_TYPES = Dict("Glacier" => "glacier", "Ice stream" => "glacier", "Ice shelf" => "iceshelf", "Dome" => "dome")
+# the name of a feature is taken from the first of these countries that named it
+const CGA_COUNTRIES = ["United States of America", "United Kingdom", "New Zealand", "Australia", "Norway"]
+
+"Antarctic glaciers, ice streams, ice shelves and domes from the SCAR Composite Gazetteer."
+function gazetteer_antarctica(g)
+    d, h = readdlm(raw("scar", "SCAR_CGA_place_names.csv"), ',', Any; header=true, quotes=true)
+    col(n) = d[:, findfirst(==(n), vec(h))]
+    name, country, lat, lon = string.(col("place_name_mapping")), string.(col("country_name")), col("latitude"), col("longitude")
+    ftype, id = string.(col("feature_type_name")), col("scar_common_id")
+    groups = Dict{Any, Vector{Int}}()
+    deleted = "is_deleted" in h ? col("is_deleted") .== "Y" : falses(length(name))
+    for k in eachindex(name)
+        haskey(CGA_TYPES, ftype[k]) && lat[k] isa Real && !deleted[k] && push!(get!(groups, id[k], Int[]), k)
+    end
+    rows = []
+    for ks in values(groups)
+        rank(k) = something(findfirst(==(country[k]), CGA_COUNTRIES), length(CGA_COUNTRIES) + 1)
+        k = ks[argmin(rank.(ks))]
+        inside(g, PROJ_ANT, lon[k], lat[k]) || continue
+        alt = filter(!=(name[k]), unique(name[ks]))
+        push!(rows, (name[k], Float64(lat[k]), Float64(lon[k]), CGA_TYPES[ftype[k]], "SCAR CGA $(id[k]) ($(country[k]))",
+                     join(alt, "|")))
+    end
+    write_gazetteer("antarctica", rows)
 end
 
 rgi_shapefiles() = [joinpath(d, f) for d in readdir(raw("rgi60"); join=true) if isdir(d)
@@ -172,4 +327,6 @@ function main(regions)
     rm(TMP; recursive=true, force=true)
 end
 
-main(isempty(ARGS) ? ["greenland", "antarctica"] : ARGS)
+if abspath(PROGRAM_FILE) == @__FILE__
+    main(isempty(ARGS) ? ["greenland", "antarctica"] : ARGS)
+end

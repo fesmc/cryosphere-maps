@@ -1,15 +1,15 @@
 # Antarctica A0 landscape poster map.
-# Usage: julia --project=. scripts/antarctica.jl [velocity|surface|bed] [dark] [nocontours] [cmap=<name>] [draft]
-# Requires the prepared grid from steps 0-1 (see README).
+# Usage: julia --project=. scripts/antarctica.jl [velocity|surface|bed] [dark] [nocontours] [cmap=<name>]
+#            [tier=2] [add=<name>;...] [list[=<text>]] [full]
+# Options: see parse_args in common.jl and the README.
 
 include("common.jl")
 
 const CREDITS_ANT = "Data: bed and surface topography from BedMachine Antarctica v4 (Morlighem et al., 2020); " *
     "surface ice velocity from MEaSUREs InSAR v2 (Rignot et al., 2011); drainage basins from IMBIE 2 " *
-    "(Rignot & Mouginot); place names from the SCAR Composite Gazetteer of Antarctica. " *
-    "Polar stereographic projection (71°S, 0°E), $(round(Int, 1000GRIDS["antarctica"].dx)) m grid."
-
-load_antarctica(; stride=1) = load_prepared("antarctica"; zfac_ice=40, stride)
+    "(Rignot & Mouginot); median sea-ice edge 1981–2010 from the Sea Ice Index v4 (Fetterer et al., 2017); place names " *
+    "from the SCAR Composite Gazetteer of Antarctica. Key numbers computed on the map grid; sea-level " *
+    "equivalent of the ice above flotation. Polar stereographic projection (71°S, 0°E)."
 
 function plot_antarctica(d, style; labels=nothing, maxtier=1, scale=1.85, ocean=:light, contours=true,
                          velcmap=CS_VEL)
@@ -40,6 +40,7 @@ function plot_antarctica(d, style; labels=nothing, maxtier=1, scale=1.85, ocean=
     # drainage divides over grounded ice, on the coarser basin grid
     basin_divides!(ax, d.xb, d.yb, d.basin, d.grounded_b; σ=1.5, color=(:black, 0.6), lw=2.5)
 
+    seaice = seaice_edges!(ax, "antarctica", ("09", "02"); ocean)
     graticule!(ax, PROJ_ANT, -80:10:-60, -180:30:150; latrange=(-88, -55), color=(:gray20, 0.4), lw=1.0)
     scalebar!(ax, xmap[1] + 150, ymap[1] + 150, 1000.0; fontsize=26)
 
@@ -54,21 +55,24 @@ function plot_antarctica(d, style; labels=nothing, maxtier=1, scale=1.85, ocean=
     Label(top[1, 1], "Antarctic\nIce Sheet"; fontsize=96, font=:bold, halign=:left, justification=:left, lineheight=0.95)
     Label(top[2, 1], "Surface ice velocity, drainage\ndivides and place names"; fontsize=36, color=:gray30,
           halign=:left, justification=:left)
-    style_colorbar!(top[3, 1], style; velcmap, vertical=false, width=panel - 40, height=32, labelsize=32, ticklabelsize=28,
-                    halign=:left)
-    symbol_legend!(top[4, 1]; scale, labelsize=28, halign=:left,
-                   extra=[(LineElement(color=(:gray25, 0.8), linewidth=1.2), "Grounding line")])
-    rowgap!(top, 1, 20); rowgap!(top, 2, 100); rowgap!(top, 3, 80)
-    Label(side[2, 1], CREDITS_ANT; fontsize=22, color=:gray30, word_wrap=true, width=panel, justification=:left,
-          halign=:left, valign=:bottom, tellheight=false)
+    cb = (; vertical=false, width=panel - 40, height=28, labelsize=30, ticklabelsize=26, halign=:left)
+    style_colorbar!(top[3, 1], style; velcmap, cb...)
+    style == :bed || ocean_colorbar!(top[4, 1], ocean; cb...)
+    contour_entry = contours || style == :surface ?
+        [(LineElement(color=(:gray20, 0.7), linewidth=0.9scale), "500 m surface contours")] : []
+    symbol_legend!(top[5, 1]; scale, labelsize=26, rowgap=2, halign=:left,
+                   extra=vcat([(LineElement(color=(:gray25, 0.8), linewidth=1.2), "Grounding line")], contour_entry, seaice))
+    numbers_box!(top[6, 1], d.attrs; title="Antarctic Ice Sheet in numbers", fontsize=26, halign=:left)
+    rowgap!(top, 1, 20); rowgap!(top, 2, 70); rowgap!(top, 3, 20); rowgap!(top, 4, 80); rowgap!(top, 5, 70)
+    bottom = side[2, 1] = GridLayout(valign=:bottom, tellheight=false)
+    qr_code!(bottom[1, 1]; size=150, fontsize=22, halign=:left)
+    Label(bottom[2, 1], CREDITS_ANT; fontsize=22, color=:gray30, word_wrap=true, width=panel, justification=:left,
+          halign=:left)
+    rowgap!(bottom, 30)
     colgap!(fig.layout, 60)
     return fig
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    o = parse_args(ARGS)
-    d = load_antarctica(; o.stride)
-    labs = read_labels(joinpath(ROOT, "data", "labels_antarctica.csv"))
-    fig = plot_antarctica(d, o.style; labels=labs, maxtier=1, o.ocean, o.contours, o.velcmap)
-    save_poster(fig, joinpath(ROOT, "plots", "antarctica_A0_$(o.style)$(o.tag)"); o.draft)
+    main_poster("antarctica", plot_antarctica)
 end

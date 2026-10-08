@@ -1,6 +1,6 @@
 #!/bin/bash
-# Step 2 on albedo: render the A0 posters from the prepared grids.
-# Usage (from the repo root): sbatch jobs/plot.sh [velocity|surface|bed]
+# Step 2 on albedo: render the full-resolution A0 posters (PDF, PNG, small PNG).
+# Usage (from the repo root): sbatch jobs/plot.sh [options of scripts/greenland.jl]
 #SBATCH --job-name=cryomaps-plot
 #SBATCH --account=envi.p_forclima
 #SBATCH --partition=smp
@@ -12,5 +12,5 @@
 #SBATCH --output=logs/%x-%j.out
 
 set -euo pipefail
-julia --project=. scripts/greenland.jl "$@"
-julia --project=. scripts/antarctica.jl "$@"
+julia --project=. scripts/greenland.jl full "$@"
+julia --project=. scripts/antarctica.jl full "$@"

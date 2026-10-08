@@ -14,3 +14,10 @@ const GRIDS = Dict(
 )
 
 prepared_file(region) = joinpath(PREP_DIR, "$(region)_$(round(Int, 1000*GRIDS[region].dx))m.nc")
+
+# Small derived data kept in the repo (gazetteers, sea-ice edges, basin outlines)
+# and a copy of the poster grid at every DRAFT_STRIDE-th node, which is enough
+# for the 1600 px sharing PNGs and needs no access to $CRYOMAPS_DATA.
+const REPO_PREP_DIR = joinpath(ROOT, "data", "prepared")
+const DRAFT_STRIDE  = 4
+draft_file(region) = joinpath(REPO_PREP_DIR, "$(region)_$(round(Int, 1000*DRAFT_STRIDE*GRIDS[region].dx))m.nc")

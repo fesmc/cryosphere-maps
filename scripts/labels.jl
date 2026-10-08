@@ -12,14 +12,85 @@ struct PlaceLabel
     lon::Float64
     lat::Float64
     type::String
-    tier::Int
+    tier::Int              # 1 major, 2 detail, 3 gazetteer; 0 = added on request
+    source::String
+    alt::Vector{String}    # other names (for searching)
 end
 
+"Read a label CSV (columns name, lat, lon, type, source, tier and optionally alt, |-separated)."
 function read_labels(path)
     d, h = readdlm(path, ',', Any; header=true, quotes=true)
-    it = findfirst(==("tier"), vec(h))
-    return [PlaceLabel(strip(string(r[1])), Float64(r[3]), Float64(r[2]), strip(string(r[4])),
-                       it === nothing ? 1 : Int(r[it])) for r in eachrow(d)]
+    col(n, default) = (i = findfirst(==(n), vec(h)); i === nothing ? fill(default, size(d, 1)) : d[:, i])
+    str(v) = strip(string(v))
+    return [PlaceLabel(str(n), Float64(lon), Float64(lat), str(t), Int(tier), str(src), filter(!isempty, split(str(alt), "|")))
+            for (n, lat, lon, t, src, tier, alt) in zip(col("name", ""), col("lat", 0), col("lon", 0), col("type", ""),
+                                                        col("source", ""), col("tier", 1), col("alt", ""))]
+end
+
+"Name normalised for matching: case-folded, accents removed."
+normname(s) = Unicode.normalize(String(s); casefold=true, stripmark=true)
+
+matches(l::PlaceLabel, q) = any(occursin(q, normname(n)) for n in vcat(l.name, l.alt))
+
+"Print the labels whose name (or another name) contains `pattern`."
+function list_names(labs, pattern="")
+    q = normname(pattern)
+    sel = sort(filter(l -> matches(l, q), labs); by=l -> (normname(l.name), l.tier))
+    println(rpad("name", 40), rpad("type", 10), rpad("tier", 6), rpad("lat", 10), rpad("lon", 10), "source / other names")
+    for l in sel
+        other = isempty(l.alt) ? "" : " / " * join(l.alt, ", ")
+        println(rpad(l.name, 40), rpad(l.type, 10), rpad(l.tier, 6), rpad(round(l.lat, digits=2), 10),
+                rpad(round(l.lon, digits=2), 10), l.source, other)
+    end
+    println(length(sel), " names (tier 1-2: label CSV, 3: gazetteer; add any of them with add=<name>)")
+end
+
+"Great-circle distance (km) between two labels."
+function distance_km(a::PlaceLabel, b::PlaceLabel)
+    φ1, φ2, Δλ = deg2rad(a.lat), deg2rad(b.lat), deg2rad(b.lon - a.lon)
+    return 6371.0 * acos(clamp(sin(φ1)*sin(φ2) + cos(φ1)*cos(φ2)*cos(Δλ), -1, 1))
+end
+
+"Levenshtein edit distance."
+function editdistance(a, b)
+    a, b = collect(a), collect(b)
+    d = collect(0:length(b))
+    for i in eachindex(a)
+        prev, d[1] = d[1], i
+        for j in eachindex(b)
+            prev, d[j+1] = d[j+1], min(d[j+1] + 1, d[j] + 1, prev + (a[i] == b[j] ? 0 : 1))
+        end
+    end
+    return d[end]
+end
+
+"""
+Labels with the names in `add` (from `labs` or else the gazetteer `gaz`, matched
+on any of their names, ignoring case and accents) set to tier 0, so they are
+always drawn. Unknown names are reported with the closest matches.
+"""
+function add_names(labs, gaz, add)
+    labs = copy(labs)
+    tier0(l) = PlaceLabel(l.name, l.lon, l.lat, l.type, 0, l.source, l.alt)
+    for name in add
+        q = normname(name)
+        exact(l) = any(normname(n) == q for n in vcat(l.name, l.alt))
+        k = findfirst(exact, labs)
+        if k !== nothing
+            labs[k] = tier0(labs[k])
+        elseif (g = findfirst(exact, gaz)) !== nothing
+            near = [l.name for l in labs if l.type == gaz[g].type && distance_km(l, gaz[g]) < 30]
+            isempty(near) || @warn "$(gaz[g].name) may be the same feature as $(join(near, ", ")) of the label CSV"
+            push!(labs, tier0(gaz[g]))
+        else
+            pool = vcat(labs, gaz)
+            dist = [minimum(occursin(q, normname(n)) ? 0 : editdistance(q, normname(n)) for n in vcat(l.name, l.alt))
+                    for l in pool]
+            close = unique(l.name for l in pool[sortperm(dist)[1:min(5, end)]])
+            @warn "name not found: $name. Closest: $(join(close, "; "))"
+        end
+    end
+    return labs
 end
 
 # Base text style per label type (sizes in figure units, scaled by `scale`)

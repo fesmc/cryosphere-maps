@@ -10,7 +10,8 @@
 using NCDatasets, Dates
 include("paths.jl")
 
-const NSIDC = "https://data.nsidc.earthdatacloud.nasa.gov/nsidc-cumulus-prod-protected"
+const NSIDC  = "https://data.nsidc.earthdatacloud.nasa.gov/nsidc-cumulus-prod-protected"
+const SEAICE = "https://noaadata.apps.nsidc.org/NOAA/G02135"
 
 # (subdirectory, url, needs Earthdata login)
 const FILES = [
@@ -30,7 +31,21 @@ const FILES = [
     ("rgi60", "https://cluster.klima.uni-bremen.de/~oggm/rgi/www.glims.org/RGI/rgi60_files/03_rgi60_ArcticCanadaNorth.zip", false),
     ("rgi60", "https://cluster.klima.uni-bremen.de/~oggm/rgi/www.glims.org/RGI/rgi60_files/04_rgi60_ArcticCanadaSouth.zip", false),
     ("rgi60", "https://cluster.klima.uni-bremen.de/~oggm/rgi/www.glims.org/RGI/rgi60_files/06_rgi60_Iceland.zip", false),
+    # Sea Ice Index v4 (Fetterer et al., NSIDC G02135): median ice edge 1981-2010,
+    # March (max) and September (min) in the north, February (min) and September (max) in the south
+    [("seaice", "$SEAICE/north/monthly/shapefiles/shp_median/median_extent_N_$(m)_1981-2010_polyline_v4.0.zip", false)
+     for m in ("03", "09")]...,
+    [("seaice", "$SEAICE/south/monthly/shapefiles/shp_median/median_extent_S_$(m)_1981-2010_polyline_v4.0.zip", false)
+     for m in ("02", "09")]...,
+    # GeoNames place names for Greenland (glacier names for the gazetteer)
+    ("geonames", "https://download.geonames.org/export/dump/GL.zip", false),
 ]
+
+# SCAR Composite Gazetteer of Antarctica (all names, CSV via the AADC web feature service)
+const CGA_URL = "https://data.aad.gov.au/geoserver/ows?service=wfs&version=2.0.0&request=GetFeature" *
+                "&typeNames=aadc:SCAR_CGA_PLACE_NAMES&outputFormat=csv" *
+                "&propertyName=place_name_mapping,country_name,latitude,longitude,feature_type_name,scar_common_id"
+const CGA_OUT = joinpath(RAW_DIR, "scar", "SCAR_CGA_place_names.csv")
 
 # ETOPO 2022 30 arc-second surface elevation, regional subset via OPeNDAP
 # (fills the Greenland poster beyond the BedMachine domain)
@@ -89,6 +104,7 @@ function main()
         download(url, dest; earthdata=edl)
         endswith(dest, ".zip") && unzip(dest)
     end
+    download(CGA_URL, CGA_OUT)
     fetch_etopo()
     println("raw data in ", RAW_DIR)
 end
