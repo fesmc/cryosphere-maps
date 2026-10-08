@@ -236,10 +236,11 @@ end
 function prepare_antarctica_paleo(t)
     g = PALEO_GRIDS["antarctica"]; yr = round(Int, 1000t)
     f = draft_file("antarctica")
-    x = readaxis(f, "x"); y = readaxis(f, "y")
+    x, y, zs_pd, zb_pd, pdmask, pd = NCDataset(f) do ds
+        rd(v) = Float64.(coalesce.(ds[v][:, :], NaN))
+        ds["x"][:], ds["y"][:], rd("z_srf"), rd("z_bed"), rd("mask"), Dict(ds.attrib)
+    end
     (x[1], x[end], y[1], y[end], x[2] - x[1]) == (g.x..., g.y..., g.dx) || error("PALEO_GRIDS[\"antarctica\"] does not match $f")
-    zs_pd, zb_pd = readvar(f, "z_srf"), readvar(f, "z_bed")
-    pdmask = Float64.(NCDataset(ds -> ds["mask"][:, :], f))
     Hpd = ifelse.(pdmask .== 2, max.(zs_pd .- zb_pd, 0.0), 0.0)     # grounded ice; floating ice is not needed
     check_registration(["Antarctica"], g, zb_pd)
     H, H0, D = pm_fields(["Antarctica"], yr, g)
@@ -251,7 +252,6 @@ function prepare_antarctica_paleo(t)
     reg = imbie_regions(g, "ANT", "Regions", names, (mask .>= 2) .| (pdmask .>= 2); detached=true, name="ant_regions")
     domains = [("", trues(size(reg))); [(lowercase(n)*"_", reg .== k) for (k, n) in enumerate(names)]]
     # present: the key numbers of the present-day poster (full-resolution grid, BedMachine thickness)
-    pd = NCDataset(ds -> Dict(ds.attrib), f)
     numbers = vcat(region_numbers(g, PROJ_ANT, domains, mask, Ht, zbt),
                    ["pd_"*k => v for (k, v) in pd if any(endswith(k, s) for s in NUMBER_KEYS)])
     append!(numbers, sle_change(numbers, first.(domains)))
