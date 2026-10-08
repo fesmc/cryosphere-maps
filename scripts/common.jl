@@ -390,16 +390,18 @@ function numbers_box!(pos, attrs; title="Key numbers", fontsize=28, kw...)
     return g
 end
 
+# rows of numbers_table!: (name, attribute, divisor, format)
+const NUMBER_ROWS = [("Ice area [10⁶ km²]", "ice_area_km2", 1e6, "%.2f"),
+                     ("   floating [10⁶ km²]", "floating_area_km2", 1e6, "%.2f"),
+                     ("Ice volume [10⁶ km³]", "ice_volume_km3", 1e6, "%.2f"),
+                     ("Max. thickness [m]", "max_thickness_m", 1, "%.0f"),
+                     ("Sea-level equiv. [m]", "sea_level_equivalent_m", 1, "%.1f")]
+
 """
 Key numbers of the ice sheet and its parts as a table: one column per
-(heading, attribute prefix) in `cols`.
+(heading, attribute prefix) in `cols`, one row per entry of `rows`.
 """
-function numbers_table!(pos, attrs, cols; title="Key numbers", note="", fontsize=24, kw...)
-    rows = [("Ice area [10⁶ km²]", "ice_area_km2", 1e6, "%.2f"),
-            ("   floating [10⁶ km²]", "floating_area_km2", 1e6, "%.2f"),
-            ("Ice volume [10⁶ km³]", "ice_volume_km3", 1e6, "%.2f"),
-            ("Max. thickness [m]", "max_thickness_m", 1, "%.0f"),
-            ("Sea-level equiv. [m]", "sea_level_equivalent_m", 1, "%.1f")]
+function numbers_table!(pos, attrs, cols; title="Key numbers", note="", fontsize=24, rows=NUMBER_ROWS, kw...)
     g = GridLayout(pos; kw...)
     Label(g[1, 1:length(cols)+1], title; fontsize=1.15fontsize, font=:bold, halign=:left)
     for (j, (head, _)) in enumerate(cols)

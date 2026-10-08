@@ -1,0 +1,15 @@
+name,lat,lon,type,source,tier
+Laurentide Ice Sheet,57.0,-88.0,region,ice sheet (approximate centre),1
+Cordilleran Ice Sheet,56.0,-126.0,region,ice sheet (approximate centre),1
+Innuitian Ice Sheet,79.5,-88.0,region,ice sheet (approximate centre),1
+Greenland Ice Sheet,73.0,-40.0,region,ice sheet (approximate centre),1
+Icelandic Ice Sheet,65.0,-18.0,region,ice sheet (approximate centre),1
+British-Irish Ice Sheet,55.5,-4.0,region,ice sheet (approximate centre),1
+Scandinavian Ice Sheet,63.0,17.0,region,ice sheet (approximate centre),1
+Barents-Kara Ice Sheet,77.0,50.0,region,ice sheet (approximate centre),1
+Beringia,66.0,-170.0,region,exposed shelf,1
+Arctic Ocean,85.0,150.0,sea,,1
+North Atlantic Ocean,45.0,-35.0,sea,,1
+North Pacific Ocean,48.0,-150.0,sea,,1
+Labrador Sea,57.5,-53.0,sea,,1
+Norwegian Sea,68.0,2.0,sea,,1
