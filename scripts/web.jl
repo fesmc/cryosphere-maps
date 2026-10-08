@@ -210,7 +210,7 @@ function build_gallery()
     md = IOBuffer()
     for (dir, title) in ((joinpath(ROOT, "plots"), "Posters"), (joinpath(ROOT, "plots", "variants"), "Variants"))
         isdir(dir) || continue
-        fs = sort(filter(endswith("_small.png"), readdir(dir)); rev=true)      # Greenland first
+        fs = sort(filter(f -> endswith(f, "_small.png") && !occursin("_coarse", f), readdir(dir)); rev=true)
         isempty(fs) && continue
         println(md, "## ", title, "\n\n::: {.grid .poster-grid}")
         for f in fs

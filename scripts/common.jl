@@ -454,20 +454,16 @@ end
 """
 Save the poster as a small PNG for sharing (`small_px` pixels on the long
 edge) and, with `pdf`, also as a PDF at true size (1 unit = 1 pt) and a PNG
-preview at `dpi_png`. Posters from the coarse grid (`full=false`) get
-`_coarse` in the PDF and PNG names, so they are not mistaken for the
-full-resolution ones.
+preview at `dpi_png`.
 """
-function save_poster(fig, out; pdf=false, full=false, dpi_png=100, small_px=1600)
+function save_poster(fig, out; pdf=false, dpi_png=100, small_px=1600)
     mkpath(dirname(out))
     if pdf
-        big = full ? out : out*"_coarse"
-        save(big*".pdf", fig; pt_per_unit=1)
-        save(big*".png", fig; px_per_unit=dpi_png/72)
-        println("saved ", big, ".{pdf,png}")
+        save(out*".pdf", fig; pt_per_unit=1)
+        save(out*".png", fig; px_per_unit=dpi_png/72)
     end
     save(out*"_small.png", fig; px_per_unit=small_px/maximum(size(fig.scene)))
-    println("saved ", out, "_small.png")
+    println("saved ", out, pdf ? ".{pdf,png} and _small.png" : "_small.png")
 end
 
 """
@@ -480,7 +476,9 @@ Command-line options:
 - `list` or `list=<text>`: print the available names (matching <text>) and exit
 - `full`: full-resolution grid (\$CRYOMAPS_DATA) and PDF + PNG output; without
   it, only the small PNG is made from the coarse grid in data/prepared.
-- `pdf`: also PDF + PNG output from the coarse grid (`*_coarse.{pdf,png}`)
+- `pdf`: also PDF + PNG output from the coarse grid
+Output from the coarse grid has `_coarse` in its name (untracked), so it never
+replaces the tracked small PNGs, which come from `full` runs.
 """
 function parse_args(args)
     val(key) = (i = findfirst(startswith(key*"="), args); i === nothing ? nothing : split(args[i], "="; limit=2)[2])
@@ -506,9 +504,12 @@ function parse_args(args)
               tag=isempty(tag) ? "" : "_"*tag)
 end
 
-"Output path (without extension): the default poster in plots/, all others in plots/variants/."
+"""
+Output path (without extension): the default poster in plots/, all others in
+plots/variants/; `_coarse` marks output from the coarse grid.
+"""
 function poster_path(region, o)
-    name = "$(region)_A0_$(o.style)$(o.tag)"
+    name = "$(region)_A0_$(o.style)$(o.tag)" * (o.full ? "" : "_coarse")
     return o.style === :velocity && isempty(o.tag) ? joinpath(ROOT, "plots", name) : joinpath(ROOT, "plots", "variants", name)
 end
 
@@ -526,7 +527,7 @@ function main_poster(region, plotfun, args=ARGS)
     labs = add_names(labs, gaz, o.add)
     d = load_prepared(region; o.full)
     fig = plotfun(d, o.style; labels=labs, maxtier=o.tier, o.ocean, o.contours, o.velcmap)
-    save_poster(fig, poster_path(region, o); o.pdf, o.full)
+    save_poster(fig, poster_path(region, o); o.pdf)
 end
 
 include("labels.jl")

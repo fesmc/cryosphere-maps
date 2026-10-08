@@ -3,6 +3,8 @@ plots/prototypes/
 plots/**/*.pdf
 plots/**/*.png
 !plots/**/*_small.png
+# output from the coarse grid in the repo (runs without `full`)
+plots/**/*_coarse*
 .DS_Store
 logs/*.out
 # generated website files (scripts/web.jl, quarto)

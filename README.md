@@ -9,7 +9,7 @@ downloaded by the pipeline itself (step 0). An interactive version is on
 
 **Quick start:** the repo contains the poster grids at every 4th node
 (`data/prepared/`), enough for the 1600 px sharing PNGs. After the setup below,
-`julia --project=. scripts/greenland.jl` makes `plots/greenland_A0_velocity_small.png`
+`julia --project=. scripts/greenland.jl` makes `plots/greenland_A0_velocity_coarse_small.png`
 in ~20 s, without downloading anything. Steps 0–1 are only needed for the
 full-resolution posters (`full`) and web tiles.
 
@@ -115,7 +115,7 @@ run as SLURM jobs from the repo root, with logs in `logs/`.
    julia --project=. scripts/antarctica.jl cmap=ember
    ```
    Without `full`, they only make the small PNG, from the coarse grids in
-   `data/prepared/` (~20 s).
+   `data/prepared/` (~20 s), with `_coarse` in its name.
 
    **Options:**
    - **Raster style:** `velocity` (default), `surface` or `bed`.
@@ -136,14 +136,16 @@ run as SLURM jobs from the repo root, with logs in `logs/`.
      `<text>`) and exit, e.g. `julia --project=. scripts/greenland.jl list=isbrae`.
    - **`full`:** full-resolution grid from `$CRYOMAPS_DATA`, and PDF + PNG
      output.
-   - **`pdf`:** PDF + PNG output from the coarse grid in the repo, as
-     `*_coarse.{pdf,png}` (2 km / 4 km grid: fine on screen, softer than
-     `full` when printed at A0).
+   - **`pdf`:** PDF + PNG output from the coarse grid in the repo (2 km / 4 km
+     grid: fine on screen, softer than `full` when printed at A0).
 
    The default poster goes to `plots/`; any other option combination goes to
    `plots/variants/`, with the options in the file name (for example
-   `antarctica_A0_velocity_ember_small.png`). Each run reports any
-   overlapping labels.
+   `antarctica_A0_velocity_ember_small.png`). Output from the coarse grid
+   has `_coarse` in its name and is not tracked, so it never replaces the
+   tracked small PNGs, which come from `full` runs: `jobs/plot.sh` for the
+   default posters and `jobs/variants.sh` for the variants in the website
+   gallery. Each run reports any overlapping labels.
 
 3. **Website**: a Quarto site (`site/`) with the poster gallery and
    interactive maps (OpenLayers, in the polar stereographic projections),
