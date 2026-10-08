@@ -100,29 +100,38 @@ DRAFT_STRIDE-th node to data/prepared in the repo.
 """
 function write_prepared(region, g, fields, basin, attrs)
     x, y = axes_km(g); xb, yb = axes_km(g; dx=g.dxb)
-    write_grids(prepared_file(region), x, y, xb, yb, fields, basin,
-                vcat(attrs, ["grid" => "EPSG:$(g.epsg), $(g.dx) km (basins $(g.dxb) km)"]))
+    write_grids(prepared_file(region), x, y, fields,
+                vcat(attrs, ["grid" => "EPSG:$(g.epsg), $(g.dx) km (basins $(g.dxb) km)"]); basins=(xb, yb, basin...))
     s = DRAFT_STRIDE
-    write_grids(draft_file(region), x[1:s:end], y[1:s:end], xb, yb,
-                [k => (v[1:s:end, 1:s:end], u) for (k, (v, u)) in fields], basin,
+    write_grids(draft_file(region), x[1:s:end], y[1:s:end],
+                [k => (v[1:s:end, 1:s:end], u) for (k, (v, u)) in fields],
                 vcat(attrs, ["grid" => "EPSG:$(g.epsg), $(s*g.dx) km (basins $(g.dxb) km)",
-                             "draft" => "every $(s)th node of $(basename(prepared_file(region)))"]))
+                             "draft" => "every $(s)th node of $(basename(prepared_file(region)))"]);
+                basins=(xb, yb, basin...))
 end
 
-function write_grids(out, x, y, xb, yb, fields, (basin, basin_names), attrs)
+"""
+Write `fields` (name => (matrix, units); masks, named `*mask`, as Int8) on the
+x, y grid (km) and the global attributes `attrs` to `out`; `basins` = (xb, yb,
+ids, names) adds the basin ids on their coarser grid.
+"""
+function write_grids(out, x, y, fields, attrs; basins=nothing)
     mkpath(dirname(out)); rm(out; force=true)
     NCDataset(out, "c") do ds
         defVar(ds, "x", x, ("x",); attrib=["units" => "km"])
         defVar(ds, "y", y, ("y",); attrib=["units" => "km"])
-        defVar(ds, "xb", xb, ("xb",); attrib=["units" => "km"])
-        defVar(ds, "yb", yb, ("yb",); attrib=["units" => "km"])
         for (k, (v, units)) in fields
-            T = k == "mask" ? Int8 : Float32
+            T = endswith(k, "mask") ? Int8 : Float32
             defVar(ds, k, T.(replace(v, NaN => (T == Int8 ? -1 : NaN32))), ("x", "y"); deflatelevel=4,
                    attrib=["units" => units])
         end
-        defVar(ds, "basin", Int16.(basin), ("xb", "yb"); deflatelevel=4,
-               attrib=["units" => "1", "names" => join(basin_names, ",")])
+        if basins !== nothing
+            xb, yb, basin, basin_names = basins
+            defVar(ds, "xb", xb, ("xb",); attrib=["units" => "km"])
+            defVar(ds, "yb", yb, ("yb",); attrib=["units" => "km"])
+            defVar(ds, "basin", Int16.(basin), ("xb", "yb"); deflatelevel=4,
+                   attrib=["units" => "1", "names" => join(basin_names, ",")])
+        end
         for (k, v) in attrs
             ds.attrib[k] = v
         end

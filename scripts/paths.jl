@@ -21,3 +21,15 @@ prepared_file(region) = joinpath(PREP_DIR, "$(region)_$(round(Int, 1000*GRIDS[re
 const REPO_PREP_DIR = joinpath(ROOT, "data", "prepared")
 const DRAFT_STRIDE  = 4
 draft_file(region) = joinpath(REPO_PREP_DIR, "$(region)_$(round(Int, 1000*DRAFT_STRIDE*GRIDS[region].dx))m.nc")
+
+# Paleo maps (scripts/prepare_paleo.jl, scripts/paleo.jl): PaleoMIST 1.0 anomalies
+# applied to present-day topography, on grids small enough to keep in the repo.
+# The Antarctic grid is that of the repo copy of the poster grid (draft_file).
+const PALEO_GRIDS = Dict(
+    "nh"         => (epsg=3413, x=(-5300.0, 4500.0), y=(-5700.0, 2500.0), dx=5.0),
+    "antarctica" => (epsg=3031, x=(-3040.0, 3040.0), y=(-3040.0, 3040.0), dx=4.0),
+)
+
+"Time slice (ka) as used in file names: 20 -> \"20ka\", 22.5 -> \"22.5ka\"."
+katag(t) = (isinteger(t) ? string(Int(t)) : string(t)) * "ka"
+paleo_file(region, t) = joinpath(REPO_PREP_DIR, "paleo_$(region)_$(katag(t)).nc")

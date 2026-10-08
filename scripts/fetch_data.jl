@@ -39,6 +39,9 @@ const FILES = [
      for m in ("02", "09")]...,
     # GeoNames place names for Greenland (glacier names for the gazetteer)
     ("geonames", "https://download.geonames.org/export/dump/GL.zip", false),
+    # PaleoMIST 1.0 ice sheet reconstruction, 80-0 ka every 2.5 kyr (Gowan et al., 2021;
+    # doi:10.1594/PANGAEA.905800), 3.5 GB, for the paleo maps
+    ("paleomist", "https://hs.pangaea.de/Maps/Global_Ice_Sheets/Gowan_ice_reconstruction.zip", false),
 ]
 
 # SCAR Composite Gazetteer of Antarctica (all names, CSV via the AADC web feature service)
@@ -47,13 +50,19 @@ const CGA_URL = "https://data.aad.gov.au/geoserver/ows?service=wfs&version=2.0.0
                 "&propertyName=place_name_mapping,country_name,latitude,longitude,feature_type_name,scar_common_id"
 const CGA_OUT = joinpath(RAW_DIR, "scar", "SCAR_CGA_place_names.csv")
 
-# ETOPO 2022 30 arc-second surface elevation, regional subset via OPeNDAP
-# (fills the Greenland poster beyond the BedMachine domain)
-const ETOPO_URL = "https://www.ngdc.noaa.gov/thredds/dodsC/global/ETOPO2022/30s/30s_surface_elev_netcdf/" *
-                  "ETOPO_2022_v1_30s_N90W180_surface.nc"
-const ETOPO_OUT = joinpath(RAW_DIR, "etopo", "ETOPO2022_30s_greenland_subset.nc")
-const ETOPO_LATS = (54.0, 88.0)
-const ETOPO_LONS = (-115.0, 30.0)
+# ETOPO 2022 subsets via OPeNDAP (NOAA NCEI, doi:10.25921/fd45-gt74): the 30 arc-second
+# surface elevation around Greenland (fills the Greenland poster beyond the BedMachine
+# domain) and the 60 arc-second surface and bedrock elevation north of 24°N (present-day
+# base of the Northern Hemisphere paleo map).
+const ETOPO = "https://www.ngdc.noaa.gov/thredds/dodsC/global/ETOPO2022"
+const ETOPO_SUBSETS = [
+    ("$ETOPO/30s/30s_surface_elev_netcdf/ETOPO_2022_v1_30s_N90W180_surface.nc", "ETOPO2022_30s_greenland_subset.nc",
+     (54.0, 88.0), (-115.0, 30.0)),
+    ("$ETOPO/60s/60s_surface_elev_netcdf/ETOPO_2022_v1_60s_N90W180_surface.nc", "ETOPO2022_60s_surface_nh.nc",
+     (24.0, 90.0), (-180.0, 180.0)),
+    ("$ETOPO/60s/60s_bed_elev_netcdf/ETOPO_2022_v1_60s_N90W180_bed.nc", "ETOPO2022_60s_bed_nh.nc",
+     (24.0, 90.0), (-180.0, 180.0)),
+]
 
 function download(url, dest; earthdata=false)
     if isfile(dest)
@@ -74,28 +83,31 @@ function unzip(zip)
     run(`unzip -q -o $zip -d $dir`)
 end
 
-function fetch_etopo()
-    isfile(ETOPO_OUT) && (println("have ", basename(ETOPO_OUT)); return)
-    mkpath(dirname(ETOPO_OUT))
-    NCDataset(ETOPO_URL) do ds
+"Subset (lats, lons) of the ETOPO 2022 grid at `url`, written to raw/etopo/`name`."
+function fetch_etopo(url, name, lats, lons)
+    out = joinpath(RAW_DIR, "etopo", name)
+    isfile(out) && (println("have ", name); return)
+    mkpath(dirname(out))
+    NCDataset(url) do ds
         lat = ds["lat"][:]; lon = ds["lon"][:]
-        ilat = findfirst(>=(ETOPO_LATS[1]), lat):findlast(<=(ETOPO_LATS[2]), lat)
-        ilon = findfirst(>=(ETOPO_LONS[1]), lon):findlast(<=(ETOPO_LONS[2]), lon)
-        println("fetching ETOPO ", length(ilon), " x ", length(ilat), " ...")
+        ilat = findfirst(>=(lats[1]), lat):findlast(<=(lats[2]), lat)
+        ilon = findfirst(>=(lons[1]), lon):findlast(<=(lons[2]), lon)
+        println("fetching ", name, " ", length(ilon), " x ", length(ilat), " ...")
         z = Matrix{Float32}(undef, length(ilon), length(ilat))
-        for c in Iterators.partition(eachindex(ilat), 400)     # chunked to keep requests small
+        nc = max(1, 8_000_000 ÷ length(ilon))                 # chunked to keep requests small
+        for c in Iterators.partition(eachindex(ilat), nc)
             z[:, c] = coalesce.(ds["z"][ilon, ilat[c]], NaN32)
         end
-        NCDataset(ETOPO_OUT*".part", "c") do out
-            defVar(out, "lon", lon[ilon], ("lon",); attrib=["units" => "degrees_east", "standard_name" => "longitude"])
-            defVar(out, "lat", lat[ilat], ("lat",); attrib=["units" => "degrees_north", "standard_name" => "latitude"])
-            defVar(out, "z", z, ("lon", "lat"); deflatelevel=4, attrib=["units" => "m", "_FillValue" => NaN32])
-            out.attrib["source"] = ETOPO_URL
-            out.attrib["reference"] = "NOAA NCEI (2022): ETOPO 2022 15 Arc-Second Global Relief Model. doi:10.25921/fd45-gt74"
-            out.attrib["accessed"] = string(today())
+        NCDataset(out*".part", "c") do o
+            defVar(o, "lon", lon[ilon], ("lon",); attrib=["units" => "degrees_east", "standard_name" => "longitude"])
+            defVar(o, "lat", lat[ilat], ("lat",); attrib=["units" => "degrees_north", "standard_name" => "latitude"])
+            defVar(o, "z", z, ("lon", "lat"); deflatelevel=4, attrib=["units" => "m", "_FillValue" => NaN32])
+            o.attrib["source"] = url
+            o.attrib["reference"] = "NOAA NCEI (2022): ETOPO 2022 15 Arc-Second Global Relief Model. doi:10.25921/fd45-gt74"
+            o.attrib["accessed"] = string(today())
         end
     end
-    mv(ETOPO_OUT*".part", ETOPO_OUT)
+    mv(out*".part", out)
 end
 
 function main()
@@ -105,7 +117,9 @@ function main()
         endswith(dest, ".zip") && unzip(dest)
     end
     download(CGA_URL, CGA_OUT)
-    fetch_etopo()
+    for (url, name, lats, lons) in ETOPO_SUBSETS
+        fetch_etopo(url, name, lats, lons)
+    end
     println("raw data in ", RAW_DIR)
 end
 
