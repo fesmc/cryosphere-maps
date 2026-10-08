@@ -1,5 +1,5 @@
 # Greenland A0 portrait poster map.
-# Usage: julia --project=. scripts/greenland.jl [velocity|surface|bed ...]
+# Usage: julia --project=. scripts/greenland.jl [velocity|surface|bed] [dark] [nocontours] [cmap=<name>] [draft]
 # Requires the prepared grid from steps 0-1 (see README).
 
 include("common.jl")
@@ -10,9 +10,10 @@ const CREDITS_GRL = "Data: bed and surface topography from BedMachine Greenland 
     "and glacier outlines from RGI 6.0 (RGI Consortium, 2017); place names from GeoNames. " *
     "Polar stereographic projection (70°N, 45°W), $(round(Int, 1000GRIDS["greenland"].dx)) m grid."
 
-load_greenland() = load_prepared("greenland"; zfac_ice=40)
+load_greenland(; stride=1) = load_prepared("greenland"; zfac_ice=40, stride)
 
-function plot_greenland(d, style; labels=nothing, maxtier=1, scale=1.85)
+function plot_greenland(d, style; labels=nothing, maxtier=1, scale=1.85, ocean=:light, contours=true,
+                         velcmap=CS_VEL)
     # Map window (km) fills the page width; beyond the BedMachine domain the
     # topography/bathymetry is ETOPO 2022 and glacier ice is from RGI 6.0.
     pad  = 70
@@ -24,7 +25,7 @@ function plot_greenland(d, style; labels=nothing, maxtier=1, scale=1.85)
     xl   = (xc - W*kmpp/2, xc + W*kmpp/2)
 
     r   = d.r
-    img = compose(style, r; srflim=(0, 3300), bedlim=(-1500, 3000))
+    img = compose(style, r; srflim=(0, 3300), bedlim=(-1500, 3000), ocean, velcmap)
 
     fig = Figure(size=A0_PORTRAIT, figure_padding=pad, backgroundcolor=:white, fontsize=24)
     head = fig[1, 1] = GridLayout()
@@ -41,9 +42,8 @@ function plot_greenland(d, style; labels=nothing, maxtier=1, scale=1.85)
     lines!(ax, Rect(xl[1], ymap[1], xl[2] - xl[1], ymap[2] - ymap[1]); color=:black, linewidth=1.5)
 
     xs = r.x[ix]; ys = r.y[iy]
-    if style == :surface
-        contourlines!(ax, xs, ys, r.zs[ix, iy], 500:500:3000; mask=r.ice[ix, iy],
-                      color=(:steelblue4, 0.45), linewidth=0.9)
+    if contours || style == :surface
+        elevation_contours!(ax, xs, ys, r.zs[ix, iy], d.grounded[ix, iy], 500:500:3000)
     end
     maskoutline!(ax, xs, ys, r.ice[ix, iy]; σ=1.5, color=(:black, 0.75), linewidth=1.5)
     basin_divides!(ax, d.xb, d.yb, d.basin, d.ice_b; σ=1.2, color=(:black, 0.6), lw=2.5)
@@ -51,16 +51,16 @@ function plot_greenland(d, style; labels=nothing, maxtier=1, scale=1.85)
 
     graticule!(ax, PROJ_GRL, 60:5:80, -80:10:0; latrange=(58, 84), color=(:gray20, 0.4), lw=1.0,
                inside=p -> xl[1] <= p[1] <= xl[2] && ymap[1] <= p[2] <= ymap[2])
-    scalebar!(ax, 700.0, ymap[1] + 60, 400.0; fontsize=26, color=:white)
+    scalebar!(ax, 700.0, ymap[1] + 60, 400.0; fontsize=26, color=(ocean === :dark ? :white : :black))
 
     if labels !== nothing
         draw_labels!(ax, labels, PROJ_GRL; layout=:coastal, kmpp, maxtier, scale, obstacles=regions,
-                     icemask=r.ice, x=r.x, y=r.y, offset=50.0, maxlead=300.0, tmax=120.0,
-                     seacolor=(style == :bed ? :gray20 : :white), limits=(xl..., ymap...))
+                     icemask=r.ice, groundedmask=d.grounded, x=r.x, y=r.y, offset=50.0, maxlead=300.0, tmax=120.0,
+                     seacolor=seacolor(style, ocean), limits=(xl..., ymap...))
     end
 
     foot = fig[3, 1] = GridLayout()
-    style_colorbar!(foot[1, 1], style; vertical=false, width=600, height=32, labelsize=32, ticklabelsize=28)
+    style_colorbar!(foot[1, 1], style; velcmap, vertical=false, width=600, height=32, labelsize=32, ticklabelsize=28)
     symbol_legend!(foot[1, 2]; scale, domes=false, labelsize=28, nbanks=2, tellheight=true)
     colgap!(foot, 150)
     Label(fig[4, 1], CREDITS_GRL; fontsize=22, color=:gray30, word_wrap=true, width=W - 200, justification=:left)
@@ -69,10 +69,9 @@ function plot_greenland(d, style; labels=nothing, maxtier=1, scale=1.85)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    styles = isempty(ARGS) ? [:velocity] : Symbol.(ARGS)
-    d = load_greenland()
+    o = parse_args(ARGS)
+    d = load_greenland(; o.stride)
     labs = read_labels(joinpath(ROOT, "data", "labels_greenland.csv"))
-    for s in styles
-        save_poster(plot_greenland(d, s; labels=labs, maxtier=1), joinpath(ROOT, "plots", "greenland_A0_$(s)"))
-    end
+    fig = plot_greenland(d, o.style; labels=labs, maxtier=1, o.ocean, o.contours, o.velcmap)
+    save_poster(fig, joinpath(ROOT, "plots", "greenland_A0_$(o.style)$(o.tag)"); o.draft)
 end

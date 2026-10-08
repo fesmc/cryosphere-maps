@@ -61,13 +61,31 @@ run as SLURM jobs from the repo root, with logs in `logs/`.
    ```
    → `$CRYOMAPS_DATA/prepared/{greenland_500m,antarctica_1000m}.nc`
 
-2. **Plot**: takes ~3 min.
+2. **Plot**: takes ~6 min.
    ```bash
    sbatch jobs/plot.sh
    ```
-   → `plots/{greenland,antarctica}_A0_velocity.{pdf,png}`. The PDF is true
-   A0 size (1 unit = 1 pt); the PNG is a 100 dpi preview. Pass `surface` or
-   `bed` to `jobs/plot.sh` for the other raster styles.
+   → `plots/{greenland,antarctica}_A0_velocity.pdf`, which is true A0 size
+   (1 unit = 1 pt), plus `.png` (a 100 dpi preview) and `_small.png` (1600 px
+   on the long edge, for sharing).
+
+   **Options** (passed to `jobs/plot.sh` or to the plot scripts):
+   - **Raster style:** `velocity` (default), `surface` or `bed`.
+   - **`dark`:** a dark ocean instead of the default light ocean, where deep
+     water fades to white.
+   - **`nocontours`:** leave out the 500 m surface contours on grounded ice.
+   - **`cmap=<name>`:** the velocity colour map:
+     - `classic` (default): beige → green → blue → purple → magenta.
+     - `ember`: cold to hot, with fast ice glowing orange.
+     - `batlow` and `lajolla`: Crameri's perceptually uniform maps.
+   - **`draft`:** uses every 4th grid node and writes only `*_draft.png`. It
+     takes ~1 min, so it can run on the login node while prototyping:
+     ```bash
+     julia --project=. scripts/antarctica.jl draft cmap=ember
+     ```
+
+   Non-default options are appended to the output file name, for example
+   `antarctica_A0_velocity_ember.pdf`. Each run reports any overlapping labels.
 
 To change the resolution or map extent, edit `GRIDS` in `scripts/paths.jl`
 and rerun steps 1–2.

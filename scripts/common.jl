@@ -109,6 +109,11 @@ end
 mix(a::RGBf, b::RGBf, t) = RGBf(a.r + t*(b.r - a.r), a.g + t*(b.g - a.g), a.b + t*(b.b - a.b))
 
 const CS_OCEAN = cgrad([colorant"#0a1f3d", colorant"#163d6b", colorant"#2f6ea6", colorant"#7fb3d9"], [0, 0.45, 0.8, 1.0])
+"Colour of sea names for a raster style and ocean variant."
+seacolor(style, ocean) = style == :bed ? :gray20 : (ocean === :light ? colorant"#1d4e89" : :white)
+
+# light variant: shallow shelf light blue, deep ocean fading to white
+const CS_OCEAN_LIGHT = cgrad([colorant"#ffffff", colorant"#e8f1f8", colorant"#c6ddef", colorant"#97c4e6"], [0, 0.45, 0.85, 1.0])
 const CS_ICE   = cgrad([colorant"#5f86ad", colorant"#8eadca", colorant"#bfd2e3", colorant"#e3ecf4", colorant"#fbfdff"], [0, 0.2, 0.45, 0.75, 1.0])
 const CS_ROCK  = cgrad([colorant"#6e604c", colorant"#a08c6c", colorant"#d2c4a8"])
 const CS_BED_LO = cgrad(reverse(ColorSchemes.oleron.colors[1:128]))   # 0 → deep
@@ -145,6 +150,12 @@ function contour_points(x, y, z, levels; mask=nothing)
 end
 
 contourlines!(ax, x, y, z, levels; mask=nothing, kw...) = lines!(ax, contour_points(x, y, z, levels; mask); kw...)
+
+"Thin surface-elevation contours over `mask`, from a surface smoothed by `σkm`."
+function elevation_contours!(ax, x, y, zs, mask, levels; σkm=2.0, color=(:gray20, 0.7), linewidth=0.9)
+    zz = gauss_smooth(zs, σkm/(x[2] - x[1]))
+    contourlines!(ax, x, y, zz, levels; mask, color, linewidth)
+end
 
 "Smoothed outline of a boolean mask."
 maskoutline!(ax, x, y, m; σ=0.7, kw...) = contourlines!(ax, x, y, gauss_smooth(Float64.(m), σ), [0.5]; kw...)
@@ -191,8 +202,20 @@ end
 # Raster composition for the three styles
 # ---------------------------------------------------------------------------
 
-const CS_VEL = cgrad([colorant"#f3e7c4", colorant"#9fd27a", colorant"#43b8b4",
-                      colorant"#2a63b3", colorant"#7a2fbf", colorant"#e3238c"])
+# Velocity colour maps (log10 speed, 0.3-3.5): slow ice fades into the hillshade
+const VEL_CMAPS = Dict(
+    # classic Rignot/Mouginot-style: beige-green-cyan-blue-purple-magenta
+    :classic => cgrad([colorant"#f3e7c4", colorant"#9fd27a", colorant"#43b8b4",
+                       colorant"#2a63b3", colorant"#7a2fbf", colorant"#e3238c"]),
+    # cold to hot: slow ice in cool blues, fast outlets glowing orange/yellow
+    :ember   => cgrad([colorant"#dcecf2", colorant"#8cc5d9", colorant"#3f84b8", colorant"#2b3a83",
+                       colorant"#9b2f74", colorant"#e8622c", colorant"#ffd23f"]),
+    # perceptually uniform, colour-blind safe (Crameri batlow)
+    :batlow  => cgrad(ColorSchemes.batlow.colors),
+    # perceptually uniform, single-hue-ish fire (Crameri lajolla, light to dark)
+    :lajolla => cgrad(ColorSchemes.lajolla.colors),
+)
+const CS_VEL = VEL_CMAPS[:classic]
 
 const C_SHELF = RGBf(colorant"#b9cbdb")
 
@@ -207,16 +230,20 @@ function raster_fields(x, y, zs, zb, mask, u; dx, zfac_ice=40, zfac_bed=6)
 end
 
 """
-Read a prepared poster grid (scripts/prepare.jl). Returns the raster fields and,
+Read a prepared poster grid (scripts/prepare.jl), every `stride`-th node (the
+basin grid spacing must stay a multiple of the result). Returns the raster fields and,
 on the basin grid, the basin ids with a matching coarse ice mask.
 """
-function load_prepared(region; zfac_ice, zfac_bed=6)
+function load_prepared(region; zfac_ice, zfac_bed=6, stride=1)
     f = prepared_file(region)
     isfile(f) || error("missing $f: run steps 0-1 (see README)")
-    x = readaxis(f, "x"); y = readaxis(f, "y"); xb = readaxis(f, "xb"); yb = readaxis(f, "yb")
-    mask = NCDataset(ds -> Int.(ds["mask"][:, :]), f)
-    r = raster_fields(x, y, readvar(f, "z_srf"), readvar(f, "z_bed"), mask, readvar(f, "u");
-                      dx=x[2] - x[1], zfac_ice, zfac_bed)
+    # stride > 1: fast low-resolution drafts (subsample in memory; strided reads of
+    # compressed netCDF are very slow)
+    rd(v) = readvar(f, v)[1:stride:end, 1:stride:end]
+    x = readaxis(f, "x")[1:stride:end]; y = readaxis(f, "y")[1:stride:end]
+    xb = readaxis(f, "xb"); yb = readaxis(f, "yb")
+    mask = NCDataset(ds -> Int.(ds["mask"][:, :]), f)[1:stride:end, 1:stride:end]
+    r = raster_fields(x, y, rd("z_srf"), rd("z_bed"), mask, rd("u"); dx=x[2] - x[1], zfac_ice, zfac_bed)
     st = round(Int, (xb[2] - xb[1])/(x[2] - x[1]))       # basin grid nodes are every st-th node
     basin, basin_names = NCDataset(ds -> (Int.(ds["basin"][:, :]), split(ds["basin"].attrib["names"], ",")), f)
     return (; r, xb, yb, basin, basin_names, grounded_b=(mask[1:st:end, 1:st:end] .== 2), ice_b=(mask[1:st:end, 1:st:end] .>= 2),
@@ -228,8 +255,11 @@ RGB image for a given style from `raster_fields` output:
   :surface  – ice-surface elevation tint + hillshade, bathymetry, rock
   :bed      – bed topography everywhere (oleron), ice margin drawn separately
   :velocity – grey hillshaded surface with log-velocity overlay
+`ocean` is :dark (deep navy) or :light (deep ocean fading to white).
 """
-function compose(style, r; srflim=(0, 3300), bedlim=(-2000, 3000), oceanlim=(-4500, 0))
+function compose(style, r; srflim=(0, 3300), bedlim=(-2000, 3000), oceanlim=(-4500, 0), ocean=:light,
+                 velcmap=CS_VEL)
+    cs_ocean, hs_ocean = ocean === :light ? (CS_OCEAN_LIGHT, 0.25) : (CS_OCEAN, 0.5)
     nx, ny = size(r.zs)
     img = Matrix{RGBf}(undef, nx, ny)
     for j in 1:ny, i in 1:nx
@@ -238,7 +268,7 @@ function compose(style, r; srflim=(0, 3300), bedlim=(-2000, 3000), oceanlim=(-45
             c = shade(bedcolor(r.zb[i, j], bedlim...), r.hs_b[i, j]; strength=0.9)
             ocean && (c = mix(c, RGBf(1, 1, 1), 0.25))
         elseif ocean
-            c = shade(cmap(CS_OCEAN, r.zb[i, j], oceanlim...), r.hs_b[i, j]; strength=0.5)
+            c = shade(cmap(cs_ocean, r.zb[i, j], oceanlim...), r.hs_b[i, j]; strength=hs_ocean)
         elseif !ice
             c = shade(cmap(CS_ROCK, r.zs[i, j], 0, 2000), r.hs_b[i, j]; strength=1.0)
         elseif style == :surface && r.shelf[i, j]
@@ -251,7 +281,7 @@ function compose(style, r; srflim=(0, 3300), bedlim=(-2000, 3000), oceanlim=(-45
             if !isnan(u) && u > 0
                 lu = log10(max(u, 1.0))
                 α = clamp((lu - 0.3)/0.9, 0, 1)
-                c = mix(c, cmap(CS_VEL, lu, 0.3, 3.5), 0.85α)
+                c = mix(c, cmap(velcmap, lu, 0.3, 3.5), 0.85α)
             end
         end
         img[i, j] = c
@@ -285,9 +315,9 @@ const A0_PORTRAIT  = (2384, 3370)
 const A0_LANDSCAPE = (3370, 2384)
 
 "Colorbar matching the raster style."
-function style_colorbar!(pos, style; bedlim=(-1.5, 3.0), srflim=(0, 3.3), kw...)
+function style_colorbar!(pos, style; bedlim=(-1.5, 3.0), srflim=(0, 3.3), velcmap=CS_VEL, kw...)
     if style == :velocity
-        Colorbar(pos; colormap=CS_VEL, limits=(0.3, 3.5), ticks=(0:3, ["1", "10", "100", "1000"]),
+        Colorbar(pos; colormap=velcmap, limits=(0.3, 3.5), ticks=(0:3, ["1", "10", "100", "1000"]),
                  label="Surface ice velocity [m/yr]", kw...)
     elseif style == :surface
         Colorbar(pos; colormap=CS_ICE, limits=srflim, label="Ice-surface elevation [km]", kw...)
@@ -314,11 +344,41 @@ function symbol_legend!(pos; scale=1.5, domes=true, extra=[], kw...)
     Legend(pos, els, labs; framevisible=false, rowgap=6, patchsize=(40, 20), kw...)
 end
 
-"Save the poster PDF at true size (1 unit = 1 pt) and a PNG preview."
-function save_poster(fig, out; dpi_png=100)
+"""
+Save the poster: PDF at true size (1 unit = 1 pt), a PNG preview at `dpi_png`,
+and a small PNG for sharing with `small_px` pixels on the long edge.
+A draft saves only the PNG preview.
+"""
+function save_poster(fig, out; dpi_png=100, small_px=1600, draft=false)
+    if draft
+        save(out*".png", fig; px_per_unit=dpi_png/72)
+        println("saved ", out, ".png"); return
+    end
     save(out*".pdf", fig; pt_per_unit=1)
     save(out*".png", fig; px_per_unit=dpi_png/72)
-    println("saved ", out, ".{pdf,png}")
+    save(out*"_small.png", fig; px_per_unit=small_px/maximum(size(fig.scene)))
+    println("saved ", out, ".{pdf,png} and ", basename(out), "_small.png")
+end
+
+"""
+Command-line options: a raster style (velocity|surface|bed) and flags
+`dark` (dark ocean), `nocontours`, `cmap=<name>` (velocity colour map, see
+VEL_CMAPS) and `draft` (every 4th grid node, PNG only; fast enough for the
+login node). Non-default options are added to the output name.
+"""
+function parse_args(args)
+    i = findfirst(in(("velocity", "surface", "bed")), args)
+    style = Symbol(i === nothing ? "velocity" : args[i])
+    ocean = "dark" in args ? :dark : :light
+    contours = !("nocontours" in args)
+    c = findfirst(startswith("cmap="), args)
+    cmapname = c === nothing ? :classic : Symbol(split(args[c], "=")[2])
+    haskey(VEL_CMAPS, cmapname) || error("unknown cmap $cmapname; options: $(keys(VEL_CMAPS))")
+    draft = "draft" in args
+    tag = join(filter(!isempty, [ocean === :dark ? "dark" : "", contours ? "" : "nocontours",
+                                 cmapname === :classic ? "" : String(cmapname), draft ? "draft" : ""]), "_")
+    return (; style, ocean, contours, velcmap=VEL_CMAPS[cmapname], stride=(draft ? 4 : 1), draft,
+              tag=isempty(tag) ? "" : "_"*tag)
 end
 
 include("labels.jl")

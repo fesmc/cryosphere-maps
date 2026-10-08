@@ -45,6 +45,42 @@ function halotext!(ax, x, y; text, fontsize, halo=true, halowidth=0.25fontsize, 
     text!(ax, x, y; text, fontsize, kw...)
 end
 
+"""
+Place area labels (regions, seas, mountains, large ice shelves): each is kept at
+its anchor if free, otherwise moved to the first free spot on rings of up to
+`maxshift[k]` text heights around it (or the least-overlapping one). `idx` gives
+the placement order; `obstacles` are boxes to keep clear.
+"""
+function place_area!(pos, wh, idx, obstacles; maxshift=fill(3.0, length(pos)))
+    placed = Tuple[obstacles...]
+    for k in idx
+        h = wh[k][2]; p0 = pos[k]
+        cands = vcat([(0.0, 0.0)], [(r*h*cos(a), r*h*sin(a)) for r in 0.5:0.5:maxshift[k] for a in (0:11) .* (π/6)])
+        best, bestc = (0.0, 0.0), Inf
+        for d in cands
+            b = boxat(p0 .+ d, wh[k], :center)
+            c = sum((overlap_area(b, o) for o in placed); init=0.0)
+            c < bestc && ((best, bestc) = (d, c))
+            c == 0 && break
+        end
+        pos[k] = p0 .+ best
+        push!(placed, boxat(pos[k], wh[k], :center))
+    end
+end
+
+"Warn about every pair of overlapping label boxes (and labels hitting `obstacles`)."
+function report_overlaps(bx, names, obstacles=Tuple[])
+    n = 0
+    for a in eachindex(bx), b in a+1:length(bx)
+        overlap(bx[a], bx[b]) && (n += 1; @warn "labels overlap: $(names[a]) / $(names[b])")
+    end
+    for a in eachindex(bx), o in obstacles
+        overlap(bx[a], o) && (n += 1; @warn "label overlaps an obstacle: $(names[a])")
+    end
+    n == 0 && println("labels: no overlaps")
+    return n
+end
+
 "Point on box b (padded) where a leader line from anchor p should end."
 function leader_attach(p, b, pad)
     p[1] > b[2] && return (b[2] + pad, (b[3] + b[4])/2)
@@ -127,19 +163,20 @@ end
 
 """
 Coastal layout. Each outer label is pushed from its anchor along the local
-outward coast normal to just beyond the ice edge (+ offset), then overlaps
+outward normal of its mask (`masks[k]`, e.g. all ice, or grounded ice for
+glaciers so they stop at the grounding line) to just beyond the edge (+ offset), then overlaps
 (with each other and with the `fixed` boxes of in-place labels) are resolved by
 sliding labels along the coast tangent; once a label has slid `tmax` km it is
 pushed further out along the normal instead. Labels whose ice exit is more than
 `maxlead` km away (e.g. ice streams feeding the big embayments) are demoted to
 in-place labels. Returns (positions, halign, outer) for every label.
 """
-function layout_coastal(pts, txtwh, outer, icemask, x, y; fixed=Tuple[], offset=120.0, maxlead=500.0,
+function layout_coastal(pts, txtwh, outer, masks, x, y; fixed=Tuple[], offset=120.0, maxlead=500.0,
                         niter=4000, step=4.0, tmax=250.0)
     n = length(pts)
-    nrm = coast_normal_field(icemask, x, y)
-    v = [nrm(p) for p in pts]
-    L = [outer[k] ? ice_exit_distance(pts[k], v[k], icemask, x, y) + offset : 0.0 for k in 1:n]
+    nrm = IdDict(m => coast_normal_field(m, x, y) for m in unique(objectid, masks))
+    v = [nrm[masks[k]](pts[k]) for k in 1:n]
+    L = [outer[k] ? ice_exit_distance(pts[k], v[k], masks[k], x, y) + offset : 0.0 for k in 1:n]
     outer = [outer[k] && L[k] - offset <= maxlead for k in 1:n]
     tng = [(-vk[2], vk[1]) for vk in v]
     t = zeros(n)
@@ -243,7 +280,7 @@ Draw labels of tier <= maxtier. `layout` is :coastal (needs icemask, x, y) or
 shelfmask on the x, y grid) are labelled in place on the shelf.
 """
 function draw_labels!(ax, labs, proj; layout, kmpp, scale=1.0, maxtier=1, types=keys(LSTYLE),
-                      seacolor=:white, icemask=nothing, shelfmask=nothing, x=nothing, y=nothing,
+                      seacolor=:white, icemask=nothing, shelfmask=nothing, groundedmask=nothing, x=nothing, y=nothing,
                       offset=150.0, maxlead=500.0, tmax=250.0, shelf_area_min=60_000.0,
                       xsplit=0.0, xleft=0.0, xright=0.0, colalign=:outward, elbow=50.0, limits=nothing,
                       obstacles=Tuple[],
@@ -257,11 +294,28 @@ function draw_labels!(ax, labs, proj; layout, kmpp, scale=1.0, maxtier=1, types=
     bigshelf = [l.type == "iceshelf" && shelfmask !== nothing &&
                 connected_area(shelfmask, x, y, p) >= shelf_area_min for (l, p) in zip(keep, pts)]
     outer0 = [st.outer && !b for (st, b) in zip(sts, bigshelf)]
+    # glaciers exit from grounded ice (label near the grounding line), the rest from all ice
+    masks = [l.type == "glacier" && groundedmask !== nothing ? groundedmask : icemask for l in keep]
+    markerbox(p) = (m = 5*scale*kmpp; (p[1] - m, p[1] + m, p[2] - m, p[2] + m))
+    markers = [markerbox(pts[k]) for k in eachindex(keep) if sts[k].marker && !sts[k].outer]
+
+    # area labels first, so they are clear of each other and of the symbols; the
+    # least mobile go first (largest first), sea names (which can roam open water) last
+    area = [!outer0[k] && !sts[k].marker for k in eachindex(keep)]
+    maxshift = [l.type == "sea" ? 5.0 : 3.0 for l in keep]
+    aidx = sort(findall(area); by=k -> (maxshift[k], -prod(wh[k])))
+    apos = copy(pts)
+    place_area!(apos, wh, aidx, vcat(obstacles, markers); maxshift)
+
     pos, ha, outer = layout === :coastal ?
-        layout_coastal(pts, wh, outer0, icemask, x, y; offset, maxlead, tmax,
-                      fixed=vcat(obstacles, [boxat(pts[k], wh[k], :center) for k in eachindex(keep)
-                                             if !sts[k].outer && !sts[k].marker || bigshelf[k]])) :
+        layout_coastal(pts, wh, outer0, masks, x, y; offset, maxlead, tmax,
+                      fixed=vcat(obstacles, markers, [boxat(apos[k], wh[k], :center) for k in aidx])) :
         layout_columns(pts, wh, outer0; xsplit, xleft, xright, colalign)
+
+    # second pass: move area labels that the coastal labels still hit
+    pos[aidx] .= apos[aidx]
+    place_area!(pos, wh, aidx, vcat(obstacles, markers, [boxat(pos[k], wh[k], ha[k]) for k in eachindex(keep) if outer[k]]);
+                maxshift)
 
     # Obstacles: outer labels at their final spots and fixed in-place labels.
     # Marker labels (stations, domes, demoted glaciers) then pick the first free
@@ -280,10 +334,7 @@ function draw_labels!(ax, labs, proj; layout, kmpp, scale=1.0, maxtier=1, types=
     flex = [!outer[k] && (sts[k].marker || demoted[k]) for k in eachindex(keep)]
     boxes = Tuple[obstacles...]
     for k in eachindex(keep)
-        if sts[k].marker || demoted[k]    # the symbol itself is an obstacle
-            m = 5*scale*kmpp
-            push!(boxes, (pts[k][1] - m, pts[k][1] + m, pts[k][2] - m, pts[k][2] + m))
-        end
+        (sts[k].marker || demoted[k]) && push!(boxes, markerbox(pts[k]))    # the symbol itself is an obstacle
         flex[k] && continue
         push!(boxes, boxat(pos[k], wh[k], ha[k]))
     end
@@ -302,6 +353,9 @@ function draw_labels!(ax, labs, proj; layout, kmpp, scale=1.0, maxtier=1, types=
         pos[k], ha[k] = c
         push!(boxes, boxat(c[1], wh[k], c[2]))
     end
+
+    kind = [outer[k] ? "coastal" : area[k] ? "area" : "symbol" for k in eachindex(keep)]
+    report_overlaps([boxat(pos[k], wh[k], ha[k]) for k in eachindex(keep)], txt .* " (" .* kind .* ")", obstacles)
 
     for k in eachindex(keep)
         l, st, p, q = keep[k], sts[k], pts[k], pos[k]
