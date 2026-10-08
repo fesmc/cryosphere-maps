@@ -5,7 +5,8 @@ surface ice velocity over hillshaded topography, drainage regions, surface
 contours, the median sea-ice edge, key numbers and place names. Julia +
 CairoMakie, with GDAL (via `GDAL_jll`) for regridding. All input data are
 downloaded by the pipeline itself (step 0). An interactive version is on
-<https://fesmc.github.io/cryosphere-maps/> (step 3).
+<https://fesmc.github.io/cryosphere-maps/> (step 3). Maps of the ice sheets at
+the Last Glacial Maximum are made the same way (see [Paleo maps](#paleo-maps)).
 
 **Quick start:** the repo contains the poster grids at every 4th node
 (`data/prepared/`), enough for the 1600 px sharing PNGs. After the setup below,
@@ -70,6 +71,11 @@ The SLURM jobs in `jobs/` run the same scripts on albedo.
 | Gazetteer (all glacier names) | GeoNames `GL.zip`, feature code GLCR | SCAR Composite Gazetteer (AADC web feature service): glaciers, ice streams, ice shelves, domes |
 
 \* needs an Earthdata login.
+
+The paleo maps also use PaleoMIST 1.0 (Gowan et al., 2021;
+doi:[10.1594/PANGAEA.905800](https://doi.org/10.1594/PANGAEA.905800), 3.5 GB)
+and, for the Northern Hemisphere, ETOPO 2022 60″ surface and bedrock elevation
+north of 24°N (OPeNDAP subsets).
 
 The label CSVs have columns `name, lat, lon, type, source, tier`. Entries
 marked `unverified` in `source` are approximate. `tier` 1 = shown on the
@@ -180,6 +186,56 @@ run as SLURM jobs from the repo root, with logs in `logs/`.
 To change the resolution or map extent, edit `GRIDS` in `scripts/paths.jl`
 and rerun steps 1–2.
 
+## Paleo maps
+
+A0 landscape maps of the Northern Hemisphere ice sheets and of Antarctica at a
+past time slice, so far the Last Glacial Maximum (20 ka), in the surface and bed
+styles of the present-day posters. Only the small PNGs are made
+(`plots/paleo/`, tracked); `pdf` gives the PDF too.
+
+**Method** (`scripts/prepare_paleo.jl`): the changes since the time slice in
+the PaleoMIST 1.0 reconstruction are applied to present-day topography, ETOPO
+2022 for the Northern Hemisphere and BedMachine Antarctica v4 (the repo copy of
+the poster grid) for Antarctica:
+
+- bed: `zb(t) = zb_pd - deform(t)`, with `deform` the relative sea-level
+  change of PaleoMIST (Earth deformation and sea-level change; from the global
+  0.25° grid outside the regional domains);
+- surface: `S(t) = max(S_pd, 0) + G[S_pm(t) - S_pm(0)]`, with `S_pm` the
+  PaleoMIST surface (paleotopography, 0 over the ocean) and `G` a 15 km
+  Gaussian smoothing, which removes the noise of the 5 km PaleoMIST grids;
+- ice thickness `S - zb` where PaleoMIST has ice at `t`, floating where it is
+  thinner than flotation.
+
+Present-day ice keeps the detail of the base data and ice beyond it follows the
+PaleoMIST surface. PaleoMIST reconstructs grounded ice only, so today's ice
+shelves beyond its ice are left out. The PaleoMIST regional grids (5 km, North
+America incl. Greenland and Iceland, Eurasia, Antarctica) are used in the
+projections given in their `projection_info.sh`. The regions of the
+Northern Hemisphere numbers (North America, Greenland, Iceland, Eurasia) are
+approximate (`nh_regions`).
+
+**Steps:** step 0 downloads PaleoMIST and the ETOPO subsets with the other
+data. Then, on albedo (grids and PNGs, ~10 min):
+```bash
+sbatch jobs/paleo.sh
+```
+or step by step, on any machine with the raw data:
+```bash
+julia --project=. scripts/prepare_paleo.jl time=20 nh antarctica
+```
+→ `data/prepared/paleo_{nh,antarctica}_20ka.nc` in the repo (commit them), with
+the surface, bed and mask at the time slice, the present-day mask and the key
+numbers (prefix `pd_` for the present). The maps need only these files:
+```bash
+julia --project=. scripts/paleo.jl nh time=20 surface
+```
+→ `plots/paleo/nh_20ka_A0_surface_small.png`. Options: `nh` or `antarctica`,
+`time=<ka>` (a PaleoMIST time slice, every 2.5 ka; 20 by default), `surface`
+(default) or `bed`, and `dark`, `nocontours` and `pdf` as for the present-day
+posters. Labels come from `data/labels_paleo_nh.csv` (ice sheets, seas) and,
+for Antarctica, the regions and seas of `data/labels_antarctica.csv`.
+
 ## Scripts
 
 - `scripts/paths.jl`: data locations and poster grid definitions.
@@ -196,7 +252,10 @@ and rerun steps 1–2.
   `:coastal`: names are pushed along the coast normal, then slid along the
   coast to avoid overlaps. An alternative `:columns` layout (stacked margin
   columns, as in Rignot & Mouginot 2012) is also available.
-- `scripts/web.jl`: step 3, the web map assets and the poster gallery.
+- `scripts/prepare_paleo.jl`, `scripts/paleo.jl`, `jobs/paleo.sh`: the paleo
+  grids and maps (see [Paleo maps](#paleo-maps)).
+- `scripts/smooth.jl`: Gaussian smoothing of grids.
+- `scripts/web.jl`: step 3, the web map assets and the poster galleries.
 - `site/`: the Quarto website; `site/js/map.js` is the interactive map,
   `site/publish.sh` publishes it.
 - `scripts/make_qr.jl`: a one-off that wrote the QR code of the website

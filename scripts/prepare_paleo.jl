@@ -13,14 +13,15 @@
 #
 # The changes are applied to the surface, with S_pm = max(topo, 0) the PaleoMIST surface
 # (sea level over the ocean), and the bed:
-#   S(t)  = max(S_pd, 0) + S_pm(t) - S_pm(0)
+#   S(t)  = max(S_pd, 0) + G[S_pm(t) - S_pm(0)]
 #   zb(t) = zb_pd - deform(t)       (global 0.25° grid outside the regional domains)
 #   H(t)  = S(t) - zb(t)            where PaleoMIST has ice at t (H_pm(t) > 0), else 0
 # Present-day ice keeps the surface detail of the base data; ice beyond it follows the
 # PaleoMIST surface, its thickness adjusted to the base bed (a thickness change would
 # blow up where PaleoMIST's present-day ice differs from the base, e.g. at grounding
 # lines). The extent is PaleoMIST's grounded ice, so today's ice shelves it does not
-# cover are left out. Ice thinner than flotation is floating.
+# cover are left out. Ice thinner than flotation is floating. G is a Gaussian smoothing
+# (DS_SMOOTH_KM), which removes the 5 km noise of the PaleoMIST surfaces.
 #
 # Output: data/prepared/paleo_<region>_<t>ka.nc in the repo with z_srf, z_bed [m], mask
 # (0 ocean, 1 ice-free land, 2 grounded ice, 3 floating ice) at the time slice and
@@ -31,6 +32,7 @@
 # Needs the raw data of step 0 (scripts/fetch_data.jl); takes a few minutes.
 
 include("prepare.jl")
+include("smooth.jl")
 
 const PM_DIR = raw("paleomist", "Gowan_ice_reconstruction", "ice_reconstruction")
 pm(parts...) = joinpath(PM_DIR, parts...)
@@ -127,7 +129,7 @@ function pm_fields(regions, yr, g)
         S  = nanmax.(S,  surf(pm_field(reg, "topo", yr, g)))
         S0 = nanmax.(S0, surf(pm_field(reg, "topo", 0, g)))
     end
-    dS = replace(S .- S0, NaN => 0.0)               # NaN outside all regions
+    dS = gauss_smooth(replace(S .- S0, NaN => 0.0), DS_SMOOTH_KM/g.dx)    # NaN outside all regions
     D = firstfinite([.-pm_field(reg, "deform", yr, g; resample="bilinear") for reg in regions]...,
                     pm_global_deform(yr, g))
     return H, H0, dS, D
@@ -147,7 +149,8 @@ function check_registration(regions, g, zb)
     end
 end
 
-const H_MIN = 10.0     # m, thinner ice is left out
+const H_MIN = 10.0           # m, thinner ice is left out
+const DS_SMOOTH_KM = 15.0    # km, width (sigma) of the smoothing of the surface change
 const NUMBER_KEYS = ["ice_area_km2", "floating_area_km2", "ice_volume_km3", "sea_level_equivalent_m", "max_thickness_m"]
 
 """
