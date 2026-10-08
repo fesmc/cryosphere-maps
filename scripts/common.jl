@@ -193,6 +193,10 @@ const CS_VEL = VEL_CMAPS[:classic]
 
 const C_SHELF = RGBf(colorant"#b9cbdb")
 
+# colour-scale limits (m) of the raster styles, shared by posters and web maps
+const STYLE_LIMITS = Dict("greenland"  => (srflim=(0, 3300), bedlim=(-1500, 3000), oceanlim=(-4500, 0)),
+                          "antarctica" => (srflim=(0, 4100), bedlim=(-2500, 3000), oceanlim=(-4500, 0)))
+
 """
 Raster fields for `compose`: hillshades of surface and bed (dx in km) plus
 masks derived from the prepared mask (0 ocean, 1 land, 2 grounded, 3 floating).
@@ -295,24 +299,40 @@ end
 const A0_PORTRAIT  = (2384, 3370)
 const A0_LANDSCAPE = (3370, 2384)
 
-"Colorbar matching the raster style."
-function style_colorbar!(pos, style; bedlim=(-1.5, 3.0), srflim=(0, 3.3), velcmap=CS_VEL, kw...)
+"""
+Colour bar clip triangles: the end colours of `cs` at the ends where the data
+range `vr` exceeds the limits `lim`.
+"""
+clips(cs, lim, vr) = (; lowclip=vr[1] < lim[1] ? get(cs, 0.0) : nothing, highclip=vr[2] > lim[2] ? get(cs, 1.0) : nothing)
+
+finite_extrema(v) = extrema(filter(isfinite, v))
+
+"""
+Colour bar matching the raster style of `compose` (same limits, in m), with
+triangles where the data in `r` exceed them.
+"""
+function style_colorbar!(pos, style, r; srflim, bedlim, velcmap=CS_VEL, kw...)
     if style == :velocity
+        umax = log10(maximum(u for u in r.u[r.ice] if isfinite(u); init=1.0))
         Colorbar(pos; colormap=velcmap, limits=(0.3, 3.5), ticks=(0:3, ["1", "10", "100", "1000"]),
-                 label="Surface ice velocity [m/yr]", kw...)
+                 label="Surface ice velocity [m/yr]", clips(velcmap, (0.3, 3.5), (0.3, umax))..., kw...)
     elseif style == :surface
-        Colorbar(pos; colormap=CS_ICE, limits=srflim, label="Ice-surface elevation [km]", kw...)
+        Colorbar(pos; colormap=CS_ICE, limits=srflim, label="Ice-surface elevation [m]",
+                 clips(CS_ICE, srflim, finite_extrema(r.zs[r.ice]))..., kw...)
     else
-        Colorbar(pos; colormap=cgrad(vcat(reverse(CS_BED_LO.colors.colors[1:4:end]), CS_BED_HI.colors.colors[1:2:end])),
-                 limits=bedlim, label="Bed elevation [km]", kw...)
+        cs = cgrad([bedcolor(v, bedlim...) for v in range(bedlim..., length=256)])
+        Colorbar(pos; colormap=cs, limits=bedlim, label="Bed elevation [m]",
+                 clips(cs, bedlim, finite_extrema(r.zb))..., kw...)
     end
 end
 
-"Ocean colour scale (depth in m) for the light or dark ocean."
-function ocean_colorbar!(pos, ocean; oceanlim=(-4500, 0), kw...)
-    cs = ocean === :light ? CS_OCEAN_LIGHT : CS_OCEAN
-    Colorbar(pos; colormap=reverse(cs), limits=(0, -oceanlim[1]), ticks=0:1000:-oceanlim[1],
-             label="Ocean depth [m]", kw...)
+"Ocean colour scale (depth in m) for the light or dark ocean, with a triangle for deeper water."
+function ocean_colorbar!(pos, ocean, r; oceanlim, kw...)
+    cs = reverse(ocean === :light ? CS_OCEAN_LIGHT : CS_OCEAN)
+    lim = (0, -oceanlim[1])
+    depth = -minimum(z for z in r.zb[r.ocean .& .!r.ice] if isfinite(z); init=0.0)
+    Colorbar(pos; colormap=cs, limits=lim, ticks=0:1000:lim[2], label="Ocean depth [m]",
+             clips(cs, lim, (0, depth))..., kw...)
 end
 
 # ---------------------------------------------------------------------------
@@ -366,7 +386,37 @@ function numbers_box!(pos, attrs; title="Key numbers", fontsize=28, kw...)
         Label(g[i+1, 1], k; fontsize, halign=:left, color=:gray25)
         Label(g[i+1, 2], v; fontsize, halign=:right, font=:bold)
     end
-    colgap!(g, 30); rowgap!(g, 4)
+    colgap!(g, 30); rowgap!(g, 4); rowgap!(g, 1, 14)
+    return g
+end
+
+"""
+Key numbers of the ice sheet and its parts as a table: one column per
+(heading, attribute prefix) in `cols`. Floating area is only given for the
+first column (the parts are the grounded IMBIE regions, see `note`).
+"""
+function numbers_table!(pos, attrs, cols; title="Key numbers", note="", fontsize=24, kw...)
+    rows = [("Ice area [10⁶ km²]", "ice_area_km2", 1e6, "%.2f"),
+            ("   floating [10⁶ km²]", "floating_area_km2", 1e6, "%.2f"),
+            ("Ice volume [10⁶ km³]", "ice_volume_km3", 1e6, "%.2f"),
+            ("Max. thickness [m]", "max_thickness_m", 1, "%.0f"),
+            ("Sea-level equiv. [m]", "sea_level_equivalent_m", 1, "%.1f")]
+    g = GridLayout(pos; kw...)
+    Label(g[1, 1:length(cols)+1], title; fontsize=1.15fontsize, font=:bold, halign=:left)
+    for (j, (head, _)) in enumerate(cols)
+        Label(g[2, j+1], head; fontsize, font=:bold, halign=:right, color=:gray25)
+    end
+    for (i, (name, key, f, fmt)) in enumerate(rows)
+        Label(g[i+2, 1], name; fontsize, halign=:left, color=:gray25)
+        for (j, (_, pre)) in enumerate(cols)
+            v = Float64(attrs[pre*key])/f
+            txt = key == "floating_area_km2" && j > 1 ? "–" : Printf.format(Printf.Format(fmt), v)
+            Label(g[i+2, j+1], txt; fontsize, halign=:right, font=(j == 1 ? :bold : :regular))
+        end
+    end
+    isempty(note) || Label(g[length(rows)+3, 1:length(cols)+1], note; fontsize=0.8fontsize, color=:gray40,
+                           halign=:left, justification=:left)
+    colgap!(g, 18); rowgap!(g, 4); rowgap!(g, 1, 14)
     return g
 end
 

@@ -26,7 +26,8 @@ function plot_greenland(d, style; labels=nothing, maxtier=1, scale=1.85, ocean=:
     xl   = (xc - W*kmpp/2, xc + W*kmpp/2)
 
     r   = d.r
-    img = compose(style, r; srflim=(0, 3300), bedlim=(-1500, 3000), ocean, velcmap)
+    lims = STYLE_LIMITS["greenland"]
+    img  = compose(style, r; lims..., ocean, velcmap)
 
     fig = Figure(size=A0_PORTRAIT, figure_padding=pad, backgroundcolor=:white, fontsize=24)
     head = fig[1, 1] = GridLayout()
@@ -64,8 +65,8 @@ function plot_greenland(d, style; labels=nothing, maxtier=1, scale=1.85, ocean=:
     foot = fig[3, 1] = GridLayout()
     bars = foot[1, 1] = GridLayout()
     cb = (; vertical=false, width=500, height=28, labelsize=30, ticklabelsize=26)
-    style_colorbar!(bars[1, 1], style; velcmap, cb...)
-    style == :bed || ocean_colorbar!(bars[2, 1], ocean; cb...)
+    style_colorbar!(bars[1, 1], style, r; lims.srflim, lims.bedlim, velcmap, cb...)
+    style == :bed || ocean_colorbar!(bars[2, 1], ocean, r; lims.oceanlim, cb...)
     rowgap!(bars, 16)
     contour_entry = contours || style == :surface ?
         [(LineElement(color=(:gray20, 0.7), linewidth=0.9scale), "500 m surface contours")] : []

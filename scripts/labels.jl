@@ -238,17 +238,19 @@ outward normal of its mask (`masks[k]`, e.g. all ice, or grounded ice for
 glaciers so they stop at the grounding line) to just beyond the edge (+ offset), then overlaps
 (with each other and with the `fixed` boxes of in-place labels) are resolved by
 sliding labels along the coast tangent; once a label has slid `tmax` km it is
-pushed further out along the normal instead. Labels whose ice exit is more than
+pushed further out along the normal instead, by at most `maxpush` km (beyond
+that it stays put, and the overlap is left to the caller). Labels whose ice exit is more than
 `maxlead` km away (e.g. ice streams feeding the big embayments) are demoted to
 in-place labels. Returns (positions, halign, outer) for every label.
 """
 function layout_coastal(pts, txtwh, outer, masks, x, y; fixed=Tuple[], offset=120.0, maxlead=500.0,
-                        niter=4000, step=4.0, tmax=250.0)
+                        niter=4000, step=4.0, tmax=250.0, maxpush=150.0)
     n = length(pts)
     nrm = IdDict(m => coast_normal_field(m, x, y) for m in unique(objectid, masks))
     v = [nrm[masks[k]](pts[k]) for k in 1:n]
     L = [outer[k] ? ice_exit_distance(pts[k], v[k], masks[k], x, y) + offset : 0.0 for k in 1:n]
     outer = [outer[k] && L[k] - offset <= maxlead for k in 1:n]
+    Lmax = L .+ maxpush
     tng = [(-vk[2], vk[1]) for vk in v]
     t = zeros(n)
     pos(k) = outer[k] ? (pts[k][1] + L[k]*v[k][1] + t[k]*tng[k][1], pts[k][2] + L[k]*v[k][2] + t[k]*tng[k][2]) : pts[k]
@@ -257,7 +259,7 @@ function layout_coastal(pts, txtwh, outer, masks, x, y; fixed=Tuple[], offset=12
     function nudge!(k, sgn)
         if abs(t[k] + sgn*step) <= tmax
             t[k] += sgn*step
-        else
+        elseif L[k] + step <= Lmax[k]
             L[k] += step
         end
     end
@@ -345,18 +347,14 @@ function connected_area(mask, x, y, p)
 end
 
 """
-Draw labels of tier <= maxtier. `layout` is :coastal (needs icemask, x, y) or
-:columns (needs xsplit, xleft, xright). `scale` multiplies all font sizes.
-`obstacles` are extra boxes (km) to keep clear, e.g. drawn region labels. Ice shelves whose connected floating area exceeds `shelf_area_min` km² (needs
-shelfmask on the x, y grid) are labelled in place on the shelf.
+Positions of the labels `keep` (see draw_labels!). Returns the label styles,
+texts, font sizes, anchors, box sizes, positions, alignments, the kind flags
+(outer, area, demoted) and the final label boxes.
 """
-function draw_labels!(ax, labs, proj; layout, kmpp, scale=1.0, maxtier=1, types=keys(LSTYLE),
-                      seacolor=:white, icemask=nothing, shelfmask=nothing, groundedmask=nothing, x=nothing, y=nothing,
-                      offset=150.0, maxlead=500.0, tmax=250.0, shelf_area_min=60_000.0,
-                      xsplit=0.0, xleft=0.0, xright=0.0, colalign=:outward, elbow=50.0, limits=nothing,
-                      obstacles=Tuple[],
-                      maplimits=limits)
-    keep = [l for l in labs if l.tier <= maxtier && l.type in types && haskey(LSTYLE, l.type)]
+function place_labels(keep; layout, proj, kmpp, scale, obstacles, icemask=nothing, shelfmask=nothing,
+                      groundedmask=nothing, x=nothing, y=nothing, offset=150.0, maxlead=500.0, tmax=250.0,
+                      maxpush=150.0, shelf_area_min=60_000.0, xsplit=0.0, xleft=0.0, xright=0.0,
+                      colalign=:outward, limits=nothing, maplimits=limits)
     sts  = [LSTYLE[l.type] for l in keep]
     txt  = [st.case(l.name) for (l, st) in zip(keep, sts)]
     fs   = [st.size*scale for st in sts]
@@ -379,7 +377,7 @@ function draw_labels!(ax, labs, proj; layout, kmpp, scale=1.0, maxtier=1, types=
     place_area!(apos, wh, aidx, vcat(obstacles, markers); maxshift)
 
     pos, ha, outer = layout === :coastal ?
-        layout_coastal(pts, wh, outer0, masks, x, y; offset, maxlead, tmax,
+        layout_coastal(pts, wh, outer0, masks, x, y; offset, maxlead, tmax, maxpush,
                       fixed=vcat(obstacles, markers, [boxat(apos[k], wh[k], :center) for k in aidx])) :
         layout_columns(pts, wh, outer0; xsplit, xleft, xright, colalign)
 
@@ -425,8 +423,66 @@ function draw_labels!(ax, labs, proj; layout, kmpp, scale=1.0, maxtier=1, types=
         push!(boxes, boxat(c[1], wh[k], c[2]))
     end
 
+    return (; sts, txt, fs, pts, wh, pos, ha, outer, area, demoted,
+              boxes=[boxat(pos[k], wh[k], ha[k]) for k in eachindex(keep)])
+end
+
+"""
+Labels to drop so that no two boxes overlap: of each overlapping pair the one
+of higher tier, or the later of two labels of tier >= 2, or for two labels of
+tier <= 1 the nearest label of a higher tier; also labels of tier >= 2 that hit
+an obstacle.
+"""
+function overlap_losers(bx, keep, obstacles)
+    lose = Set{Int}()
+    for a in eachindex(bx), b in a+1:length(bx)
+        (a in lose || b in lose || !overlap(bx[a], bx[b])) && continue
+        ta, tb = keep[a].tier, keep[b].tier
+        k = ta > tb ? a : tb > ta ? b : ta >= 2 ? b : 0
+        if k == 0
+            # two important labels pushed together: make room by dropping the
+            # nearest label of a higher tier, if any
+            m = ((bx[a][1] + bx[a][2] + bx[b][1] + bx[b][2])/4, (bx[a][3] + bx[a][4] + bx[b][3] + bx[b][4])/4)
+            cand = [c for c in eachindex(bx) if keep[c].tier > ta && c ∉ lose]
+            dist(c) = hypot((bx[c][1] + bx[c][2])/2 - m[1], (bx[c][3] + bx[c][4])/2 - m[2])
+            isempty(cand) || (k = cand[argmin(dist.(cand))])
+        end
+        k > 0 && push!(lose, k)
+    end
+    for a in eachindex(bx), o in obstacles
+        keep[a].tier >= 2 && overlap(bx[a], o) && push!(lose, a)
+    end
+    return sort(collect(lose))
+end
+
+"""
+Draw labels of tier <= maxtier. `layout` is :coastal (needs icemask, x, y) or
+:columns (needs xsplit, xleft, xright). `scale` multiplies all font sizes.
+`obstacles` are extra boxes (km) to keep clear, e.g. drawn region labels. Ice
+shelves whose connected floating area exceeds `shelf_area_min` km² (needs
+shelfmask on the x, y grid) are labelled in place on the shelf.
+
+Where labels still overlap after the layout, the less important one (higher
+tier; the later one of two tier-2 labels) is dropped and the layout repeated,
+so dense label sets show as many names as fit. Overlaps among tier 0-1 labels
+are kept and reported.
+"""
+function draw_labels!(ax, labs, proj; layout, kmpp, scale=1.0, maxtier=1, types=keys(LSTYLE),
+                      seacolor=:white, elbow=50.0, obstacles=Tuple[], kw...)
+    keep = [l for l in labs if l.tier <= maxtier && l.type in types && haskey(LSTYLE, l.type)]
+    dropped = String[]
+    P = place_labels(keep; layout, proj, kmpp, scale, obstacles, kw...)
+    for _ in 1:10
+        lose = overlap_losers(P.boxes, keep, obstacles)
+        isempty(lose) && break
+        append!(dropped, [keep[k].name for k in lose])
+        keep = keep[setdiff(eachindex(keep), lose)]
+        P = place_labels(keep; layout, proj, kmpp, scale, obstacles, kw...)
+    end
+    isempty(dropped) || println("labels: no room for ", join(dropped, ", "))
+    (; sts, txt, fs, pts, wh, pos, ha, outer, area, demoted) = P
     kind = [outer[k] ? "coastal" : area[k] ? "area" : "symbol" for k in eachindex(keep)]
-    report_overlaps([boxat(pos[k], wh[k], ha[k]) for k in eachindex(keep)], txt .* " (" .* kind .* ")", obstacles)
+    report_overlaps(P.boxes, txt .* " (" .* kind .* ")", obstacles)
 
     for k in eachindex(keep)
         l, st, p, q = keep[k], sts[k], pts[k], pos[k]

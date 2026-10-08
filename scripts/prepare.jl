@@ -144,7 +144,7 @@ Key numbers of the ice (mask 2 or 3) inside `domain`: area, floating area,
 volume, maximum thickness and the sea-level equivalent of the grounded ice
 above flotation. Cell areas are corrected for the scale distortion of `proj`.
 """
-function ice_numbers(g, proj, mask, H, zb; domain=trues(size(mask)))
+function ice_numbers(g, proj, mask, H, zb; domain=trues(size(mask)), prefix="")
     x, y = axes_km(g); a0 = (1e3*g.dx)^2
     area = afl = vol = vaf = hmax = 0.0
     for j in eachindex(y), i in eachindex(x)
@@ -159,10 +159,12 @@ function ice_numbers(g, proj, mask, H, zb; domain=trues(size(mask)))
         end
     end
     sle = vaf*RHO_ICE/(RHO_FRESH*OCEAN_AREA)
-    println("  area $(round(area/1e12, digits=3)) Mkm², volume $(round(vol/1e15, digits=3)) Mkm³, ",
+    println("  $(prefix)area $(round(area/1e12, digits=3)) Mkm², volume $(round(vol/1e15, digits=3)) Mkm³, ",
             "SLE $(round(sle, digits=2)) m, max thickness $(round(Int, hmax)) m")
-    return ["ice_area_km2" => area/1e6, "floating_area_km2" => afl/1e6, "ice_volume_km3" => vol/1e9,
-            "sea_level_equivalent_m" => sle, "max_thickness_m" => hmax,
+    out = [prefix*"ice_area_km2" => area/1e6, prefix*"floating_area_km2" => afl/1e6, prefix*"ice_volume_km3" => vol/1e9,
+           prefix*"sea_level_equivalent_m" => sle, prefix*"max_thickness_m" => hmax]
+    isempty(prefix) || return out
+    return [out;
             "numbers_note" => "on the poster grid; SLE of grounded ice above flotation with " *
                               "rho_ice = $RHO_ICE, rho_sea = $RHO_SEA (flotation), rho_fresh = $RHO_FRESH kg/m3, " *
                               "ocean area $(OCEAN_AREA/1e6) km2"]
@@ -219,6 +221,11 @@ function prepare_antarctica()
     m[m .== 4] .= 2                                   # Lake Vostok -> grounded ice
     m[isnan.(m)] .= 0
     numbers = ice_numbers(g, PROJ_ANT, m, H, zb)
+    # East and West Antarctica and the Peninsula (IMBIE 2 regions; the islands are left out)
+    for reg in ("East", "West", "Peninsula")
+        dom = rasterize(imbie_shapefile("ANT"), g; where="Regions = '$reg'", name="ant_$(lowercase(reg))") .> 0
+        append!(numbers, ice_numbers(g, PROJ_ANT, m, H, zb; domain=dom, prefix=lowercase(reg)*"_"))
+    end
     vel = raw("measures", "antarctica_ice_velocity_450m_v2.nc")
     vx = warp(bm_var(vel, "VX"), g; s_srs=s, name="ant_vx")
     vy = warp(bm_var(vel, "VY"), g; s_srs=s, name="ant_vy")
@@ -227,7 +234,8 @@ function prepare_antarctica()
     write_prepared("antarctica", g,
         ["z_srf" => (zs, "m"), "z_bed" => (zb, "m"), "u" => (speed(vx, vy), "m/yr"), "mask" => (m, "1")], basin,
         vcat(["sources" => "BedMachine Antarctica v4; MEaSUREs NSIDC-0484 v2; IMBIE2 basins",
-              "numbers_domain" => "all grounded and floating ice in BedMachine"], numbers))
+              "numbers_domain" => "all grounded and floating ice in BedMachine; east_, west_, peninsula_: " *
+                                  "inside the IMBIE 2 regions"], numbers))
     seaice_geojson("antarctica", g, "S", ("02", "09"))
     gazetteer_antarctica(g)
 end

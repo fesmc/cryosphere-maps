@@ -30,8 +30,6 @@ const WEB_STYLES = [("velocity", "Ice velocity", :velocity, :classic),
                     ("velocity_ember", "Ice velocity (ember)", :velocity, :ember),
                     ("surface", "Surface elevation", :surface, :classic),
                     ("bed", "Bed elevation", :bed, :classic)]
-const STYLE_LIMITS = Dict("greenland" => (srflim=(0, 3300), bedlim=(-1500, 3000)),
-                          "antarctica" => (srflim=(0, 4100), bedlim=(-2500, 3000)))
 const SEAICE_MONTHS = Dict("greenland" => ("03", "09"), "antarctica" => ("09", "02"))
 
 # ---------------------------------------------------------------------------

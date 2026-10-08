@@ -100,7 +100,8 @@ run as SLURM jobs from the repo root, with logs in `logs/`.
      - `classic` (default): beige → green → blue → purple → magenta.
      - `ember`: cold to hot, with fast ice glowing orange.
      - `batlow` and `lajolla`: Crameri's perceptually uniform maps.
-   - **`tier=2`:** also show the tier-2 names of the label CSV.
+   - **`tier=2`:** also show the tier-2 names of the label CSV. Names that do
+     not fit without overlaps are left out and listed.
    - **`add=<name>;<name>…`:** add names from the label CSV or the gazetteer,
      matched on any of their names, ignoring case and accents. Unknown names
      are reported with the closest matches, and gazetteer names close to a
