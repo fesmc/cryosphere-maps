@@ -5,19 +5,22 @@
 #
 # PaleoMIST provides, on 5 km grids in regional projections (North America incl.
 # Greenland and Iceland, Eurasia, Antarctica):
-#   thickness/<yr>.nc  grounded ice thickness
+#   thickness/<yr>.nc  grounded ice thickness H_pm
+#   topo/<yr>.nc       paleotopography: surface of the ice or the ground relative to sea level
 #   deform/<yr>.nc     change of the bed elevation relative to sea level (deformation
 #                      and sea-level change), zero at present
 # and, globally on a 0.25° grid, the deformed base topography at every time slice.
 #
-# With H the ice thickness and zb the bed elevation relative to sea level:
+# The changes are applied to the surface, with S_pm = max(topo, 0) the PaleoMIST surface
+# (sea level over the ocean), and the bed:
+#   S(t)  = max(S_pd, 0) + S_pm(t) - S_pm(0)
 #   zb(t) = zb_pd + deform(t)       (global 0.25° grid outside the regional domains)
-#   H(t)  = max(H_pd + H_pm(t) - H_pm(0), 0)  where the base has grounded ice and
-#                                             PaleoMIST has ice today,
-#           H_pm(t)                           elsewhere,
-# so present-day ice keeps the detail of the base data and ice beyond it (and over
-# today's ice shelves, which PaleoMIST does not include) comes from PaleoMIST.
-# Ice thinner than flotation is floating; PaleoMIST itself has grounded ice only.
+#   H(t)  = S(t) - zb(t)            where PaleoMIST has ice at t (H_pm(t) > 0), else 0
+# Present-day ice keeps the surface detail of the base data; ice beyond it follows the
+# PaleoMIST surface, its thickness adjusted to the base bed (a thickness change would
+# blow up where PaleoMIST's present-day ice differs from the base, e.g. at grounding
+# lines). The extent is PaleoMIST's grounded ice, so today's ice shelves it does not
+# cover are left out. Ice thinner than flotation is floating.
 #
 # Output: data/prepared/paleo_<region>_<t>ka.nc in the repo with z_srf, z_bed [m], mask
 # (0 ocean, 1 ice-free land, 2 grounded ice, 3 floating ice) at the time slice and
@@ -76,7 +79,7 @@ end
 
 """
 Change of the PaleoMIST base topography (deformation and sea-level change) between
-`yr` and the present on the global 0.25° grid, on grid `g`.
+`yr` and the present on the global 0.25° grid (the hemisphere of `g`), on grid `g`.
 """
 function pm_global_deform(yr, g)
     f = pm("global_grid", "reconstruction_0.25_degree.nc")
@@ -88,11 +91,12 @@ function pm_global_deform(yr, g)
         ds["lon"][:], ds["lat"][:], Float32.(coalesce.(b[:, :, it] .- b[:, :, i0], NaN32))
     end
     keep = lon .< 180                            # drop the repeated 180° column
+    hemi = (g.epsg == 3031 ? -1 : 1) .* lat .>= 0
     mkpath(TMP); out = joinpath(TMP, "pm_global_deform_$(yr).nc"); rm(out; force=true)
     NCDataset(out, "c") do ds
         defVar(ds, "lon", lon[keep], ("lon",); attrib=["units" => "degrees_east", "standard_name" => "longitude"])
-        defVar(ds, "lat", lat, ("lat",); attrib=["units" => "degrees_north", "standard_name" => "latitude"])
-        defVar(ds, "z", d[keep, :], ("lon", "lat"); attrib=["_FillValue" => NaN32])
+        defVar(ds, "lat", lat[hemi], ("lat",); attrib=["units" => "degrees_north", "standard_name" => "latitude"])
+        defVar(ds, "z", d[keep, hemi], ("lon", "lat"); attrib=["_FillValue" => NaN32])
     end
     return warp("NETCDF:$(out):z", g; s_srs="EPSG:4326", resample="bilinear", name="pm_global_deform_$(yr)")
 end
@@ -107,19 +111,26 @@ function firstfinite(fields...)
 end
 
 """
-PaleoMIST ice thickness at `yr` and at present, and the bed change at `yr`, on
-grid `g` from the regional grids `regions` (the global grid outside them).
+PaleoMIST fields on grid `g` from the regional grids `regions`: ice thickness at
+`yr` and at present, the change of the surface S_pm = max(topo, 0) from the present
+to `yr` (0 outside the regions) and the bed change at `yr` (from the global grid
+outside the regions). Where regions overlap, the highest surface counts.
 """
 function pm_fields(regions, yr, g)
     z0 = zeros(length(axes_km(g)[1]), length(axes_km(g)[2]))
-    H, H0 = copy(z0), copy(z0)
+    H, H0, S, S0 = copy(z0), copy(z0), fill(NaN, size(z0)), fill(NaN, size(z0))
+    surf(v) = max.(v, 0.0)
+    nanmax(a, b) = isnan(a) ? b : isnan(b) ? a : max(a, b)
     for reg in regions
         H  = max.(H,  replace(pm_field(reg, "thickness", yr, g), NaN => 0.0))
         H0 = max.(H0, replace(pm_field(reg, "thickness", 0, g), NaN => 0.0))
+        S  = nanmax.(S,  surf(pm_field(reg, "topo", yr, g)))
+        S0 = nanmax.(S0, surf(pm_field(reg, "topo", 0, g)))
     end
+    dS = replace(S .- S0, NaN => 0.0)               # NaN outside all regions
     D = firstfinite([pm_field(reg, "deform", yr, g; resample="bilinear") for reg in regions]...,
                     pm_global_deform(yr, g))
-    return H, H0, D
+    return H, H0, dS, D
 end
 
 """
@@ -140,27 +151,27 @@ const H_MIN = 10.0     # m, thinner ice is left out
 const NUMBER_KEYS = ["ice_area_km2", "floating_area_km2", "ice_volume_km3", "sea_level_equivalent_m", "max_thickness_m"]
 
 """
-Ice thickness, bed, surface and mask at the time slice from the base (bed `zb`,
-thickness `Hpd`, grounded ice `grounded`) and the PaleoMIST fields.
+Ice thickness, bed, surface and mask at the time slice from the base (surface
+`zs`, bed `zb`) and the PaleoMIST thickness `H`, surface change `dS` and bed change
+`D` (see pm_fields).
 """
-function apply_paleo(zb, Hpd, grounded, H, H0, D)
-    anom = grounded .& (H0 .> 0)
-    Ht = ifelse.(anom, max.(Hpd .+ H .- H0, 0.0), H)
+function apply_paleo(zs, zb, H, dS, D)
     zbt = zb .+ D
-    mask = zeros(size(zbt)); zs = similar(zbt)
+    Ht = ifelse.(H .>= H_MIN, max.(max.(zs, 0.0) .+ dS .- zbt, 0.0), 0.0)
+    mask = zeros(size(zbt)); zst = similar(zbt)
     for i in eachindex(zbt)
         h, b = Ht[i], zbt[i]
         if h < H_MIN
             Ht[i] = 0.0
             mask[i] = b < 0 ? 0 : 1
-            zs[i] = max(b, 0.0)
+            zst[i] = max(b, 0.0)
         elseif h*RHO_ICE/RHO_SEA < -b
-            mask[i] = 3; zs[i] = h*(1 - RHO_ICE/RHO_SEA)
+            mask[i] = 3; zst[i] = h*(1 - RHO_ICE/RHO_SEA)
         else
-            mask[i] = 2; zs[i] = b + h
+            mask[i] = 2; zst[i] = b + h
         end
     end
-    return Ht, zbt, zs, mask
+    return Ht, zbt, zst, mask
 end
 
 "Key numbers of the ice in each (prefix, domain) of `domains`, prefixed with `pre`."
@@ -213,13 +224,13 @@ function prepare_nh(t)
     zs_pd, zb_pd = et("surface"), et("bed")
     regions = ["North_America", "Eurasia"]
     check_registration(regions, g, zb_pd)
-    H, H0, D = pm_fields(regions, yr, g)
+    H, H0, dS, D = pm_fields(regions, yr, g)
 
     # present: ETOPO ice (surface above bed: Greenland) and the PaleoMIST ice caps
     Hpd = max.(zs_pd .- zb_pd, 0.0)
     grounded = Hpd .>= H_MIN
     pdmask = ifelse.(grounded .| (H0 .>= H_MIN), 2.0, ifelse.(zs_pd .< 0, 0.0, 1.0))
-    Ht, zbt, zst, mask = apply_paleo(zb_pd, Hpd, grounded, H, H0, D)
+    Ht, zbt, zst, mask = apply_paleo(zs_pd, zb_pd, H, dS, D)
 
     reg = nh_regions(g)
     domains = [("", trues(size(reg))); [(r*"_", reg .== r) for r in ("namerica", "greenland", "iceland", "eurasia")]]
@@ -241,10 +252,9 @@ function prepare_antarctica_paleo(t)
         ds["x"][:], ds["y"][:], rd("z_srf"), rd("z_bed"), rd("mask"), Dict(ds.attrib)
     end
     (x[1], x[end], y[1], y[end], x[2] - x[1]) == (g.x..., g.y..., g.dx) || error("PALEO_GRIDS[\"antarctica\"] does not match $f")
-    Hpd = ifelse.(pdmask .== 2, max.(zs_pd .- zb_pd, 0.0), 0.0)     # grounded ice; floating ice is not needed
     check_registration(["Antarctica"], g, zb_pd)
-    H, H0, D = pm_fields(["Antarctica"], yr, g)
-    Ht, zbt, zst, mask = apply_paleo(zb_pd, Hpd, pdmask .== 2, H, H0, D)
+    H, _, dS, D = pm_fields(["Antarctica"], yr, g)
+    Ht, zbt, zst, mask = apply_paleo(zs_pd, zb_pd, H, dS, D)
 
     # East, West and the Peninsula as for the present-day poster, with the ice at the
     # time slice (and today's) given to the nearest region
