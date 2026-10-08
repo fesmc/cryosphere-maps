@@ -7,14 +7,14 @@
 # Greenland and Iceland, Eurasia, Antarctica):
 #   thickness/<yr>.nc  grounded ice thickness H_pm
 #   topo/<yr>.nc       paleotopography: surface of the ice or the ground relative to sea level
-#   deform/<yr>.nc     change of the bed elevation relative to sea level (deformation
-#                      and sea-level change), zero at present
+#   deform/<yr>.nc     relative sea-level change (deformation and sea-level change),
+#                      zero at present: topo = modern_topo - deform + thickness
 # and, globally on a 0.25° grid, the deformed base topography at every time slice.
 #
 # The changes are applied to the surface, with S_pm = max(topo, 0) the PaleoMIST surface
 # (sea level over the ocean), and the bed:
 #   S(t)  = max(S_pd, 0) + S_pm(t) - S_pm(0)
-#   zb(t) = zb_pd + deform(t)       (global 0.25° grid outside the regional domains)
+#   zb(t) = zb_pd - deform(t)       (global 0.25° grid outside the regional domains)
 #   H(t)  = S(t) - zb(t)            where PaleoMIST has ice at t (H_pm(t) > 0), else 0
 # Present-day ice keeps the surface detail of the base data; ice beyond it follows the
 # PaleoMIST surface, its thickness adjusted to the base bed (a thickness change would
@@ -113,8 +113,8 @@ end
 """
 PaleoMIST fields on grid `g` from the regional grids `regions`: ice thickness at
 `yr` and at present, the change of the surface S_pm = max(topo, 0) from the present
-to `yr` (0 outside the regions) and the bed change at `yr` (from the global grid
-outside the regions). Where regions overlap, the highest surface counts.
+to `yr` (0 outside the regions) and the bed change at `yr` (minus the relative
+sea-level change; from the global grid outside the regions). Where regions overlap, the highest surface counts.
 """
 function pm_fields(regions, yr, g)
     z0 = zeros(length(axes_km(g)[1]), length(axes_km(g)[2]))
@@ -128,7 +128,7 @@ function pm_fields(regions, yr, g)
         S0 = nanmax.(S0, surf(pm_field(reg, "topo", 0, g)))
     end
     dS = replace(S .- S0, NaN => 0.0)               # NaN outside all regions
-    D = firstfinite([pm_field(reg, "deform", yr, g; resample="bilinear") for reg in regions]...,
+    D = firstfinite([.-pm_field(reg, "deform", yr, g; resample="bilinear") for reg in regions]...,
                     pm_global_deform(yr, g))
     return H, H0, dS, D
 end
