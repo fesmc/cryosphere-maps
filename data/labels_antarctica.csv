@@ -1,0 +1,158 @@
+name,lat,lon,type,source,tier
+Ross Ice Shelf,-81.5,-175.0,iceshelf,SCAR gaz,1
+Ronne Ice Shelf,-78.5,-61.0,iceshelf,SCAR gaz,1
+Filchner Ice Shelf,-79.0,-40.0,iceshelf,SCAR gaz,1
+Larsen B Ice Shelf,-65.6,-61.5,iceshelf,unverified (between Robertson Is. and Jason Pen.),1
+Larsen C Ice Shelf,-67.5,-62.0,iceshelf,SCAR gaz (Larsen IS) / Jason Pen.-Gipps Ice Rise,1
+Larsen D Ice Shelf,-70.8,-61.0,iceshelf,unverified (Gipps Ice Rise to Smith Pen.),2
+George VI Ice Shelf,-71.75,-68.0,iceshelf,SCAR gaz,1
+Wilkins Ice Shelf,-70.33,-72.75,iceshelf,SCAR gaz,1
+Abbot Ice Shelf,-72.75,-96.0,iceshelf,SCAR gaz,1
+Getz Ice Shelf,-74.25,-125.75,iceshelf,SCAR gaz,1
+Sulzberger Ice Shelf,-77.0,-148.0,iceshelf,SCAR gaz,1
+Nickerson Ice Shelf,-75.75,-145.0,iceshelf,SCAR gaz,2
+Pine Island Ice Shelf,-75.0,-101.3,iceshelf,SCAR gaz (adj.),2
+Thwaites Ice Shelf,-75.0,-106.0,iceshelf,SCAR gaz (Thwaites Glacier Tongue; adj.),2
+Crosson Ice Shelf,-74.95,-109.5,iceshelf,SCAR gaz,2
+Dotson Ice Shelf,-74.4,-112.37,iceshelf,SCAR gaz,2
+Amery Ice Shelf,-70.3,70.8,iceshelf,SCAR gaz (adj. to centre),1
+West Ice Shelf,-66.78,85.0,iceshelf,SCAR gaz,1
+Shackleton Ice Shelf,-66.0,100.0,iceshelf,SCAR gaz,1
+Totten Ice Shelf,-66.75,116.1,iceshelf,SCAR gaz (Totten Glacier Tongue; adj.),1
+Moscow University Ice Shelf,-67.0,121.0,iceshelf,SCAR gaz,1
+Cook Ice Shelf,-68.67,152.5,iceshelf,SCAR gaz,2
+Mertz Glacier Tongue,-67.17,145.5,iceshelf,SCAR gaz,2
+Ninnis Glacier Tongue,-68.08,147.75,iceshelf,SCAR gaz,2
+Drygalski Ice Tongue,-75.43,163.5,iceshelf,SCAR gaz,1
+Nansen Ice Shelf,-74.88,163.17,iceshelf,SCAR gaz,2
+Brunt Ice Shelf,-75.3,-24.0,iceshelf,SCAR gaz (adj.),1
+Riiser-Larsen Ice Shelf,-72.67,-16.0,iceshelf,SCAR gaz,1
+Fimbul Ice Shelf,-70.5,-0.17,iceshelf,SCAR gaz,1
+Stancomb-Wills Glacier Tongue,-74.89,-22.19,iceshelf,SCAR gaz,2
+Ekström Ice Shelf,-71.0,-8.17,iceshelf,SCAR gaz,2
+Jelbart Ice Shelf,-70.64,-4.67,iceshelf,SCAR gaz,2
+Roi Baudouin Ice Shelf,-70.43,24.32,iceshelf,Wikipedia,2
+Lazarev Ice Shelf,-69.79,14.58,iceshelf,SCAR gaz,2
+Pine Island Glacier,-75.25,-99.5,glacier,SCAR gaz (adj. inland of grounding line),1
+Thwaites Glacier,-75.5,-106.75,glacier,SCAR gaz,1
+Smith Glacier,-75.07,-111.6,glacier,SCAR gaz,2
+Pope Glacier,-75.28,-111.43,glacier,SCAR gaz,2
+Kohler Glacier,-74.92,-113.75,glacier,SCAR gaz,2
+Byrd Glacier,-80.3,159.5,glacier,SCAR gaz,1
+Beardmore Glacier,-84.0,170.67,glacier,SCAR gaz,1
+Nimrod Glacier,-82.37,163.0,glacier,SCAR gaz,2
+Shackleton Glacier,-84.78,-176.22,glacier,SCAR gaz,2
+Axel Heiberg Glacier,-85.42,-163.0,glacier,SCAR gaz,2
+Scott Glacier,-85.75,-153.0,glacier,SCAR gaz (Transantarctic Mts),2
+Amundsen Glacier,-85.64,-159.0,glacier,SCAR gaz,2
+David Glacier,-75.35,161.0,glacier,SCAR gaz (adj.),1
+Mawson Glacier,-76.26,161.89,glacier,SCAR gaz,2
+Mercer Ice Stream,-84.83,-145.0,glacier,SCAR gaz,2
+Whillans Ice Stream,-83.67,-145.0,glacier,SCAR gaz,1
+Kamb Ice Stream,-82.25,-145.0,glacier,SCAR gaz,1
+Bindschadler Ice Stream,-81.0,-142.0,glacier,SCAR gaz,2
+MacAyeal Ice Stream,-80.0,-143.0,glacier,SCAR gaz,2
+Institute Ice Stream,-82.0,-75.0,glacier,SCAR gaz,1
+Möller Ice Stream,-82.33,-62.0,glacier,SCAR gaz,1
+Rutford Ice Stream,-79.0,-81.0,glacier,SCAR gaz,1
+Evans Ice Stream,-76.0,-78.0,glacier,SCAR gaz,2
+Carlson Inlet,-77.92,-79.25,glacier,SCAR gaz,2
+Foundation Ice Stream,-83.25,-60.0,glacier,SCAR gaz,1
+Academy Glacier,-84.25,-61.0,glacier,SCAR gaz,2
+Support Force Glacier,-82.97,-47.17,glacier,SCAR gaz,2
+Recovery Glacier,-81.19,-27.0,glacier,SCAR gaz,1
+Slessor Glacier,-79.83,-27.0,glacier,SCAR gaz,1
+Bailey Ice Stream,-79.0,-30.0,glacier,SCAR gaz,2
+Stancomb-Wills Glacier,-75.3,-19.0,glacier,SCAR gaz,2
+Jutulstraumen,-71.86,-0.83,glacier,SCAR gaz,1
+Lambert Glacier,-73.07,67.49,glacier,SCAR gaz (AUS entry),1
+Mellor Glacier,-73.51,66.41,glacier,SCAR gaz,2
+Fisher Glacier,-73.27,64.98,glacier,SCAR gaz,2
+Denman Glacier,-66.85,99.7,glacier,SCAR gaz (adj. inland of grounding line),1
+Totten Glacier,-67.1,116.4,glacier,SCAR gaz (adj. inland of grounding line),1
+Frost Glacier,-67.14,129.14,glacier,SCAR gaz,2
+Holmes Glacier,-66.69,127.02,glacier,SCAR gaz,2
+Dibble Glacier,-66.22,134.62,glacier,SCAR gaz,2
+Mertz Glacier,-67.56,144.67,glacier,SCAR gaz,2
+Ninnis Glacier,-68.32,147.34,glacier,SCAR gaz,2
+Cook Glacier,-69.0,152.0,glacier,unverified (feeds Cook Ice Shelf),2
+Rennick Glacier,-70.5,160.75,glacier,SCAR gaz,2
+Lillie Glacier,-70.78,163.94,glacier,SCAR gaz,2
+Shirase Glacier,-70.2,38.94,glacier,SCAR gaz,1
+Hays Glacier,-67.68,46.32,glacier,SCAR gaz,2
+Rayner Glacier,-67.81,48.47,glacier,SCAR gaz,2
+Dronning Maud Land,-73.83,12.67,region,SCAR gaz,1
+Coats Land,-77.25,-27.38,region,SCAR gaz,1
+Enderby Land,-68.5,51.75,region,SCAR gaz,1
+Kemp Land,-68.3,57.5,region,SCAR gaz (adj. inland),2
+Mac. Robertson Land,-69.78,65.67,region,SCAR gaz,1
+Princess Elizabeth Land,-69.25,80.18,region,SCAR gaz,1
+Wilhelm II Land,-68.5,90.0,region,SCAR gaz (adj. inland),1
+Queen Mary Land,-68.5,96.0,region,SCAR gaz (adj. inland),1
+Wilkes Land,-69.0,120.0,region,SCAR gaz,1
+Adélie Land,-68.5,138.5,region,SCAR gaz (adj. inland),1
+George V Land,-68.5,148.0,region,SCAR gaz,1
+Oates Land,-71.0,157.5,region,SCAR gaz (adj.),2
+Victoria Land,-74.5,163.0,region,SCAR gaz,1
+Marie Byrd Land,-77.5,-130.0,region,SCAR gaz (adj. to centre),1
+Ellsworth Land,-75.25,-82.5,region,SCAR gaz,2
+Palmer Land,-71.0,-65.0,region,SCAR gaz,1
+Graham Land,-65.67,-63.0,region,SCAR gaz,1
+Antarctic Peninsula,-68.0,-64.0,region,SCAR gaz,2
+Siple Coast,-82.0,-153.0,region,SCAR gaz,1
+Amundsen Sea Embayment,-76.0,-105.0,region,unverified,2
+Transantarctic Mountains,-85.0,-175.0,mountains,SCAR gaz,1
+Ellsworth Mountains,-78.88,-84.75,mountains,SCAR gaz,1
+Gamburtsev Subglacial Mountains,-80.5,76.0,mountains,SCAR gaz,1
+Prince Charles Mountains,-71.81,67.08,mountains,SCAR gaz,1
+Dome A (Argus),-80.37,77.35,dome,Wikipedia (CHINARE GPS),1
+Dome C,-75.1,123.4,dome,SCAR gaz (Concordia),1
+Dome F (Fuji),-77.32,39.7,dome,SCAR gaz (Dome Fuji Stn),1
+Ridge B (Dome B),-79.02,93.69,dome,Antarctic Science 2021 (Dome B),1
+Law Dome,-66.73,112.83,dome,SCAR gaz,2
+Talos Dome,-72.82,159.18,dome,TALDICE site,2
+Amundsen-Scott South Pole Station,-90.0,0.0,station,SCAR gaz,1
+Vostok Station,-78.47,106.8,station,SCAR gaz,1
+Concordia Station,-75.1,123.4,station,SCAR gaz,2
+Kunlun Station,-80.42,77.12,station,SCAR gaz,2
+Dome Fuji Station,-77.32,39.7,station,SCAR gaz,2
+Byrd Station,-80.02,-119.53,icecore,SCAR gaz,1
+WAIS Divide,-79.47,-112.09,icecore,PANGAEA / WAIS Divide project,1
+EDML (Kohnen),-75.0,0.07,icecore,SCAR gaz,1
+Siple Dome,-81.65,-149.07,icecore,SCAR gaz (Siple Dome Camp),2
+McMurdo Station,-77.85,166.67,station,SCAR gaz,2
+Halley VI,-75.57,-25.51,station,Wikipedia,2
+Neumayer III,-70.67,-8.27,station,Wikipedia,2
+Casey,-66.28,110.53,station,SCAR gaz,2
+Davis,-68.58,77.97,station,SCAR gaz,2
+Mawson,-67.6,62.87,station,SCAR gaz,2
+Dumont d'Urville,-66.67,140.01,station,SCAR gaz,2
+Rothera,-67.57,-68.12,station,SCAR gaz,2
+Wilkes Subglacial Basin,-75.0,145.0,basin,SCAR gaz,1
+Aurora Subglacial Basin,-74.0,114.0,basin,SCAR gaz,1
+Byrd Subglacial Basin,-80.0,-115.0,basin,SCAR gaz,2
+Bentley Subglacial Trench,-80.0,-105.0,basin,SCAR gaz,1
+Recovery Subglacial Lakes,-83.0,17.5,lake,Wikipedia list (Bell et al. 2007; centroid of A-D),1
+Lake Vostok,-77.45,105.38,lake,SCAR gaz,1
+Weddell Sea,-71.0,-44.0,sea,SCAR gaz,1
+Ross Sea,-74.5,178.0,sea,unverified (open water N of shelf front),1
+Amundsen Sea,-73.0,-112.0,sea,SCAR gaz,1
+Bellingshausen Sea,-71.0,-85.0,sea,SCAR gaz,1
+Southern Ocean,-62.0,125.0,sea,unverified (placement),1
+Davis Sea,-65.67,91.33,sea,SCAR gaz,2
+Cosmonaut Sea,-67.0,42.0,sea,SCAR gaz,2
+Riiser-Larsen Sea,-68.0,22.0,sea,unverified,2
+Lazarev Sea,-68.0,7.0,sea,SCAR gaz,2
+Cooperation Sea,-67.0,70.0,sea,SCAR gaz,2
+Dumont d'Urville Sea,-65.5,140.5,sea,SCAR gaz,2
+Somov Sea,-68.75,162.5,sea,SCAR gaz,2
+Mawson Sea,-65.0,105.0,sea,SCAR gaz,2
+Scotia Sea,-58.0,-50.0,sea,unverified (placed near Peninsula tip),2
+Prydz Bay,-69.0,75.5,sea,SCAR gaz,1
+Berkner Island,-79.5,-48.17,island,SCAR gaz,1
+Roosevelt Island,-79.44,-162.0,island,SCAR gaz,1
+Alexander Island,-71.0,-70.0,island,SCAR gaz,1
+Thurston Island,-72.3,-99.5,island,SCAR gaz,2
+Siple Island,-73.65,-125.0,island,SCAR gaz,2
+Ross Island,-77.5,168.0,island,SCAR gaz,2
+Adelaide Island,-67.25,-68.5,island,SCAR gaz,2
