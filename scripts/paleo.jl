@@ -75,6 +75,7 @@ function plot_paleo(d, region, t, style; labels=nothing, scale=1.85, ocean=:ligh
     ix = findall(xi -> xmap[1] <= xi <= xmap[2], r.x); iy = findall(yi -> ymap[1] <= yi <= ymap[2], r.y)
     h = r.dx/2
     image!(ax, (r.x[ix[1]] - h, r.x[ix[end]] + h), (r.y[iy[1]] - h, r.y[iy[end]] + h), img[ix, iy]; interpolate=true)
+    lines!(ax, Rect(xmap[1], ymap[1], xmap[2] - xmap[1], ymap[2] - ymap[1]); color=:black, linewidth=1.5)
     xs = r.x[ix]; ys = r.y[iy]
 
     if contours || style == :surface
@@ -87,11 +88,12 @@ function plot_paleo(d, region, t, style; labels=nothing, scale=1.85, ocean=:ligh
 
     graticule!(ax, P.proj, P.lats, P.lons; latrange=P.latrange, color=(:gray20, 0.4), lw=1.0,
                inside=p -> xmap[1] <= p[1] <= xmap[2] && ymap[1] <= p[2] <= ymap[2])
-    scalebar!(ax, xmap[1] + 70kmpp, ymap[1] + 70kmpp, 1000.0; fontsize=26,
+    scalebar!(ax, xmap[1] + 70kmpp, ymap[1] + 90kmpp, 1000.0; fontsize=26,
               color=(ocean === :dark ? :white : :black))
+    url = site_url!(ax, (xmap..., ymap...), kmpp; corner=:left, ocean)
 
     if labels !== nothing
-        draw_labels!(ax, labels, P.proj; layout=:coastal, kmpp, maxtier=1, scale, types=("region", "sea"),
+        draw_labels!(ax, labels, P.proj; layout=:coastal, kmpp, maxtier=1, scale, types=("region", "sea"), obstacles=[url],
                      icemask=r.ice, groundedmask=d.grounded, x=r.x, y=r.y, limits=(xmap..., ymap...),
                      seacolor=seacolor(style, ocean))
     end
