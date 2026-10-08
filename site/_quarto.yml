@@ -18,6 +18,8 @@ website:
         text: Greenland
       - href: antarctica.qmd
         text: Antarctica
+      - href: paleo.qmd
+        text: Paleo
       - href: about.qmd
         text: Data & methods
     right:

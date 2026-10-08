@@ -29,6 +29,30 @@ Peninsula; for Greenland the ice sheet without the peripheral ice caps). These
 polygons cover the grounded ice, so ice outside them (ice shelves, islands, the
 ice margin) is given to the nearest region.
 
+## Paleo maps
+
+The [paleo maps](paleo.qmd) show the ice sheets at the Last Glacial Maximum
+(20 000 years ago) from the PaleoMIST 1.0 reconstruction (Gowan et al., 2021;
+[doi:10.1594/PANGAEA.905800](https://doi.org/10.1594/PANGAEA.905800)). The
+changes since then in PaleoMIST are added to present-day topography: ETOPO 2022
+(NOAA NCEI) north of 24°N, on a 5 km grid (EPSG:3413), and BedMachine
+Antarctica v4 on a 4 km grid (EPSG:3031).
+
+- **Bed:** the present-day bed minus the relative sea-level change of
+  PaleoMIST (Earth deformation and the lower sea level), so the bed is given
+  relative to the sea level of the time.
+- **Ice surface:** the present-day surface plus the change of the PaleoMIST
+  surface (taken as sea level over the ocean), smoothed over 15 km to remove
+  the noise of the 5 km PaleoMIST grids. Present-day ice keeps the detail of
+  the present-day data, and ice beyond it follows the PaleoMIST surface.
+- **Ice:** where PaleoMIST has ice at the time; its thickness is the surface
+  minus the bed, and ice thinner than flotation floats. PaleoMIST reconstructs
+  grounded ice only, so present-day ice shelves beyond it are left out.
+
+The key numbers are computed as for the present-day posters. The regions of the
+Northern Hemisphere numbers (North America, Greenland, Iceland, Eurasia) are
+approximate.
+
 ## The website
 
 The site is built with [Quarto](https://quarto.org) and hosted on GitHub Pages.

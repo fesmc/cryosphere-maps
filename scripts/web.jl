@@ -192,45 +192,65 @@ const NAME_PARTS = Dict("velocity" => "ice velocity", "surface" => "surface elev
     "dark" => "dark ocean", "nocontours" => "no contours", "ember" => "ember colours", "batlow" => "batlow colours",
     "lajolla" => "lajolla colours", "tier2" => "more names", "custom" => "added names")
 
+const REGION_NAMES = Dict("greenland" => "Greenland", "antarctica" => "Antarctica", "nh" => "Northern Hemisphere")
+
+"Caption from a poster file name: region[, time slice]: options, e.g. \"Northern Hemisphere, 20 ka: surface elevation\"."
+function caption(f)
+    parts = filter(!=("A0"), split(replace(f, "_small.png" => ""), "_"))
+    name = REGION_NAMES[popfirst!(parts)]
+    occursin(r"^[0-9.]+ka$", first(parts)) && (name *= ", " * replace(popfirst!(parts), "ka" => " ka"))
+    return name * ": " * join([get(NAME_PARTS, p, p) for p in parts], ", ")
+end
+
+"""
+Gallery section `title` of the small PNGs in `dir` (`cols` of 12 grid columns
+each), copied to assets/img/, with links to the PDF and full PNG where they
+exist (copied to assets/posters/), or else to the small PNG itself (`pnglink`).
+"""
+function gallery_section!(md, dir, title; cols=4, pnglink=false)
+    img, big = joinpath(ASSETS, "img"), joinpath(ASSETS, "posters")
+    isdir(dir) || return
+    fs = sort(filter(f -> endswith(f, "_small.png") && !occursin("_coarse", f), readdir(dir)); rev=true)
+    isempty(fs) && return
+    println(md, "## ", title, "\n\n::: {.grid .poster-grid}")
+    for f in fs
+        cp(joinpath(dir, f), joinpath(img, f); force=true)
+        println(md, "::: {.g-col-12 .g-col-md-", cols, "}")
+        println(md, "![", caption(f), "](assets/img/", f, "){group=\"", title, "\"}\n")
+        links = String[]
+        for (ext, what) in ((".pdf", "PDF, A0"), (".png", "PNG, 100 dpi"))
+            src = joinpath(dir, replace(f, "_small.png" => ext))
+            isfile(src) || continue
+            cp(src, joinpath(big, basename(src)); force=true)
+            mb = round(Int, filesize(src)/2^20)
+            push!(links, "[$what, $mb MB](assets/posters/$(basename(src)))")
+        end
+        if isempty(links) && pnglink
+            push!(links, "[PNG, 1600 px, $(round(Int, filesize(joinpath(dir, f))/2^20)) MB](assets/img/$f)")
+        end
+        println(md, "[", caption(f), "]{.poster-links}", isempty(links) ? "" : " · " * join(links, " · "))
+        println(md, ":::")
+    end
+    println(md, ":::\n")
+end
+
 """
 Copy the poster files to the site (small PNGs to assets/img/, the PDFs and
-full PNGs of the default posters to assets/posters/) and write site/_gallery.md
-(included by index.qmd): the default posters with their downloads, then the
-variants.
+full PNGs of the default posters to assets/posters/) and write the galleries:
+site/_gallery.md (included by index.qmd) with the default posters and their
+downloads, then the variants, and site/_gallery_paleo.md (paleo.qmd) with the
+paleo maps.
 """
 function build_gallery()
-    img, big = joinpath(ASSETS, "img"), joinpath(ASSETS, "posters")
-    for d in (img, big)
+    for d in (joinpath(ASSETS, "img"), joinpath(ASSETS, "posters"))
         rm(d; recursive=true, force=true); mkpath(d)
     end
-    function caption(f)
-        region, _, parts... = split(replace(f, "_small.png" => ""), "_")
-        return uppercasefirst(region) * ": " * join([get(NAME_PARTS, p, p) for p in parts], ", ")
-    end
     md = IOBuffer()
-    for (dir, title) in ((joinpath(ROOT, "plots"), "Posters"), (joinpath(ROOT, "plots", "variants"), "Variants"))
-        isdir(dir) || continue
-        fs = sort(filter(f -> endswith(f, "_small.png") && !occursin("_coarse", f), readdir(dir)); rev=true)
-        isempty(fs) && continue
-        println(md, "## ", title, "\n\n::: {.grid .poster-grid}")
-        for f in fs
-            cp(joinpath(dir, f), joinpath(img, f); force=true)
-            println(md, "::: {.g-col-12 .g-col-md-", title == "Posters" ? 6 : 4, "}")
-            println(md, "![", caption(f), "](assets/img/", f, "){group=\"", title, "\"}\n")
-            links = String[]
-            for (ext, what) in ((".pdf", "PDF, A0"), (".png", "PNG, 100 dpi"))
-                src = joinpath(dir, replace(f, "_small.png" => ext))
-                isfile(src) || continue
-                cp(src, joinpath(big, basename(src)); force=true)
-                mb = round(Int, filesize(src)/2^20)
-                push!(links, "[$what, $mb MB](assets/posters/$(basename(src)))")
-            end
-            println(md, "[", caption(f), "]{.poster-links}", isempty(links) ? "" : " · " * join(links, " · "))
-            println(md, ":::")
-        end
-        println(md, ":::\n")
-    end
+    gallery_section!(md, joinpath(ROOT, "plots"), "Posters"; cols=6)
+    gallery_section!(md, joinpath(ROOT, "plots", "variants"), "Variants")
     write(joinpath(SITE, "_gallery.md"), take!(md))
+    gallery_section!(md, joinpath(ROOT, "plots", "paleo"), "Maps"; cols=6, pnglink=true)
+    write(joinpath(SITE, "_gallery_paleo.md"), take!(md))
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
