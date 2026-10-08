@@ -1,6 +1,6 @@
 # Greenland A0 portrait poster map.
 # Usage: julia --project=. scripts/greenland.jl [velocity|surface|bed] [dark] [nocontours] [cmap=<name>]
-#            [tier=2] [add=<name>;...] [list[=<text>]] [full]
+#            [tier=2] [add=<name>;...] [list[=<text>]] [full] [pdf]
 # Options: see parse_args in common.jl and the README.
 
 include("common.jl")

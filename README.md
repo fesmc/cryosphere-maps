@@ -37,7 +37,8 @@ machine urs.earthdata.nasa.gov login <user> password <password>
 ### Full-resolution posters on your own machine
 
 The PDFs and full PNGs are not in the repo (download them from the website,
-or make them yourself; they stay untracked). Steps 0–1 run on any machine with
+or make them yourself; they stay untracked). The `pdf` option makes them from
+the coarse grids in the repo, without any downloads. Steps 0–1 run on any machine with
 Julia, internet access and an Earthdata login; GDAL comes with the Julia
 packages. Plotting at full resolution needs ~16 GB of memory.
 
@@ -135,6 +136,9 @@ run as SLURM jobs from the repo root, with logs in `logs/`.
      `<text>`) and exit, e.g. `julia --project=. scripts/greenland.jl list=isbrae`.
    - **`full`:** full-resolution grid from `$CRYOMAPS_DATA`, and PDF + PNG
      output.
+   - **`pdf`:** PDF + PNG output from the coarse grid in the repo, as
+     `*_coarse.{pdf,png}` (2 km / 4 km grid: fine on screen, softer than
+     `full` when printed at A0).
 
    The default poster goes to `plots/`; any other option combination goes to
    `plots/variants/`, with the options in the file name (for example

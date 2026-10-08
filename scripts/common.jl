@@ -453,17 +453,21 @@ end
 
 """
 Save the poster as a small PNG for sharing (`small_px` pixels on the long
-edge) and, with `full`, also as a PDF at true size (1 unit = 1 pt) and a PNG
-preview at `dpi_png`.
+edge) and, with `pdf`, also as a PDF at true size (1 unit = 1 pt) and a PNG
+preview at `dpi_png`. Posters from the coarse grid (`full=false`) get
+`_coarse` in the PDF and PNG names, so they are not mistaken for the
+full-resolution ones.
 """
-function save_poster(fig, out; full=false, dpi_png=100, small_px=1600)
+function save_poster(fig, out; pdf=false, full=false, dpi_png=100, small_px=1600)
     mkpath(dirname(out))
-    if full
-        save(out*".pdf", fig; pt_per_unit=1)
-        save(out*".png", fig; px_per_unit=dpi_png/72)
+    if pdf
+        big = full ? out : out*"_coarse"
+        save(big*".pdf", fig; pt_per_unit=1)
+        save(big*".png", fig; px_per_unit=dpi_png/72)
+        println("saved ", big, ".{pdf,png}")
     end
     save(out*"_small.png", fig; px_per_unit=small_px/maximum(size(fig.scene)))
-    println("saved ", out, full ? ".{pdf,png} and _small.png" : "_small.png")
+    println("saved ", out, "_small.png")
 end
 
 """
@@ -476,10 +480,11 @@ Command-line options:
 - `list` or `list=<text>`: print the available names (matching <text>) and exit
 - `full`: full-resolution grid (\$CRYOMAPS_DATA) and PDF + PNG output; without
   it, only the small PNG is made from the coarse grid in data/prepared.
+- `pdf`: also PDF + PNG output from the coarse grid (`*_coarse.{pdf,png}`)
 """
 function parse_args(args)
     val(key) = (i = findfirst(startswith(key*"="), args); i === nothing ? nothing : split(args[i], "="; limit=2)[2])
-    known = ("velocity", "surface", "bed", "dark", "nocontours", "full", "list")
+    known = ("velocity", "surface", "bed", "dark", "nocontours", "full", "pdf", "list")
     for a in args
         a in known || any(startswith(a, k*"=") for k in ("cmap", "tier", "add", "list")) || error("unknown option $a")
     end
@@ -497,6 +502,7 @@ function parse_args(args)
                                  cmapname === :classic ? "" : String(cmapname), tier == 1 ? "" : "tier$tier",
                                  isempty(add) ? "" : "custom"]), "_")
     return (; style, ocean, contours, velcmap=VEL_CMAPS[cmapname], tier, add, list, full="full" in args,
+              pdf=("full" in args || "pdf" in args),
               tag=isempty(tag) ? "" : "_"*tag)
 end
 
@@ -520,7 +526,7 @@ function main_poster(region, plotfun, args=ARGS)
     labs = add_names(labs, gaz, o.add)
     d = load_prepared(region; o.full)
     fig = plotfun(d, o.style; labels=labs, maxtier=o.tier, o.ocean, o.contours, o.velcmap)
-    save_poster(fig, poster_path(region, o); o.full)
+    save_poster(fig, poster_path(region, o); o.pdf, o.full)
 end
 
 include("labels.jl")
