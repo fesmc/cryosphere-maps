@@ -1,8 +1,9 @@
 # cryosphere-maps
 
 A0 poster maps of the Greenland (portrait) and Antarctic (landscape) ice sheets:
-surface ice velocity over hillshaded topography, drainage divides and place
-names. Julia + CairoMakie.
+surface ice velocity over hillshaded topography, drainage regions and place
+names. Julia + CairoMakie, with GDAL (via `GDAL_jll`) for regridding. All input
+data are downloaded by the pipeline itself (step 0).
 
 ## Setup
 
@@ -13,83 +14,74 @@ git clone git@github.com:fesmc/cryosphere-maps.git
 cd cryosphere-maps && julia --project=. -e 'using Pkg; Pkg.instantiate()'
 ```
 
-The ice-sheet fields are read from a local `~/models/ice_data` checkout (path
-set by `ICE_DATA` in `scripts/common.jl`).
+Raw downloads and prepared grids go to `$CRYOMAPS_DATA`. The default is
+`/albedo/work/projects/p_forclima/cryosphere-maps-data`; set the variable to
+use another location (see `scripts/paths.jl`). About 12 GB are needed.
 
-## Input data
+The NASA Earthdata files need an account and a `~/.netrc` entry (file mode 600):
 
-**Local (`~/models/ice_data`)**, 8 km unless noted:
+```
+machine urs.earthdata.nasa.gov login <user> password <password>
+```
+
+## Data sources
 
 | Field | Greenland | Antarctica |
 |---|---|---|
-| Topography | `GRL-8KM/GRL-8KM_TOPO-M17.nc` (BedMachine v3) | `ANT-8KM/ANT-8KM_TOPO-BedMachine.nc` (BedMachine v2) |
-| Velocity | `GRL-8KM/GRL-8KM_VEL-J18.nc` | `ANT-16KM/ANT-16KM_VEL-R11-2.nc` (16 km) |
-| Basins | `GRL-8KM/GRL-8KM_BASINS-nasa.nc` | `ANT-16KM/ANT-16KM_BASINS-nasa.nc` (16 km) |
+| Bed/surface topography, ice mask | BedMachine Greenland v6, 150 m (NSIDC IDBMG4)* | BedMachine Antarctica v4, 500 m (NSIDC-0756)* |
+| Surface velocity | MEaSUREs multi-year mosaic, 250 m (NSIDC-0670)* | MEaSUREs InSAR v2, 450 m (NSIDC-0484)* |
+| Drainage regions | IMBIE 2 (Rignot & Mouginot): NO, NE, NW, CW, SW, SE | IMBIE 2: 18 basins A-Ap … K-A |
+| Beyond BedMachine | ETOPO 2022 30″ (NOAA NCEI, OPeNDAP subset); RGI 6.0 outlines, regions 03/04/06 (OGGM mirror) | — |
+| Place names | `data/labels_greenland.csv` (GeoNames) | `data/labels_antarctica.csv` (SCAR Composite Gazetteer) |
 
-The Antarctic velocity and basins come from the 16 km files because the 8 km
-versions are broken: `ANT-8KM_VEL-R11-2.nc` has `uxy_srf` and `uy_srf` all
-zero, and `ANT-8KM_BASINS-nasa.nc` has `basin` all zero.
+\* needs an Earthdata login.
 
-**Downloaded** (Greenland only; raw files go to `data/external/`, which is not
-committed; the regridded results in `data/GRL-8KM-EXT_*.nc` are). These fill the map beyond the BedMachine
-domain (x −720…960 km):
-- ETOPO 2022 topography/bathymetry (NOAA NCEI, doi:10.25921/fd45-gt74), steps 1–2.
-- RGI 6.0 glacier outlines (RGI Consortium, 2017, doi:10.7265/N5-RGI-60) for
-  regions 03 Arctic Canada North, 04 Arctic Canada South and 06 Iceland. These
-  mask the ice caps; steps 3–4.
-
-**Place names:** `data/labels_{greenland,antarctica}.csv` (`name, lat, lon,
-type, source, tier`). They were compiled from the SCAR Composite Gazetteer
-(Antarctica), GeoNames (Greenland) and Wikipedia. Entries marked `unverified`
-in `source` are approximate. `tier` 1 = shown on the posters, 2 = extra detail.
+The label CSVs have columns `name, lat, lon, type, source, tier`. Entries
+marked `unverified` in `source` are approximate. `tier` 1 = shown on the
+posters, 2 = extra detail.
 
 ## Steps
 
-1. **Fetch the ETOPO 2022 subset** (Greenland only). This is a ~18 MB subset
-   (54–88°N, 115°W–30°E, 2 arc-min) read over OPeNDAP from NOAA THREDDS; the
-   global file is not downloaded.
-   ```bash
-   julia --project=. scripts/fetch_etopo.jl
-   ```
-   → `data/external/ETOPO2022_60s_greenland_subset.nc`
+On albedo, run step 0 on the login node (it needs internet access); steps 1–2
+run as SLURM jobs from the repo root, with logs in `logs/`.
 
-2. **Regrid ETOPO onto the extended 8 km Greenland grid.** This is the GRL-8KM
-   grid padded by 400 km on each side, filled by bin-averaging the projected
-   ETOPO points.
+0. **Download** the raw data to `$CRYOMAPS_DATA/raw`. Existing files are
+   skipped and partial downloads resume. This takes ~10 min.
    ```bash
-   julia --project=. scripts/prepare_etopo.jl
+   julia --project=. scripts/fetch_data.jl
    ```
-   → `data/GRL-8KM-EXT_ETOPO2022.nc`
 
-3. **Fetch the RGI 6.0 outlines.** These are regional shapefiles from the OGGM
-   mirror (no login): 03 (11 MB), 04 (26 MB) and 06 (2.5 MB).
+1. **Prepare**: regrid onto the poster grids defined in `scripts/paths.jl`:
+   Greenland at 500 m (EPSG:3413), Antarctica at 1 km (EPSG:3031), and the
+   basins on a coarser 4 / 8 km grid. Continuous fields are area-averaged and
+   the mask uses the mode. Outside the BedMachine domain, Greenland is filled
+   with ETOPO 2022, and RGI marks the ice caps. Takes ~2 min.
    ```bash
-   julia --project=. scripts/fetch_rgi.jl
+   sbatch jobs/prepare.sh
    ```
-   → `data/external/rgi60/<region>/*.shp`
+   → `$CRYOMAPS_DATA/prepared/{greenland_500m,antarctica_1000m}.nc`
 
-4. **Rasterise RGI onto the same extended grid** as a glacier area fraction
-   (4×4 sub-samples per 8 km cell). Cells with a fraction > 0.5 are treated as ice.
+2. **Plot**: takes ~3 min.
    ```bash
-   julia --project=. scripts/prepare_rgi.jl
-   ```
-   → `data/GRL-8KM-EXT_RGI60.nc`
-
-5. **Plot**:
-   ```bash
-   julia --project=. scripts/greenland.jl
-   ```
-   ```bash
-   julia --project=. scripts/antarctica.jl
+   sbatch jobs/plot.sh
    ```
    → `plots/{greenland,antarctica}_A0_velocity.{pdf,png}`. The PDF is true
    A0 size (1 unit = 1 pt); the PNG is a 100 dpi preview. Pass `surface` or
-   `bed` as an argument for the other raster styles.
+   `bed` to `jobs/plot.sh` for the other raster styles.
+
+To change the resolution or map extent, edit `GRIDS` in `scripts/paths.jl`
+and rerun steps 1–2.
 
 ## Scripts
 
-- `scripts/common.jl`: projection, regridding/refinement, hillshade,
-  colour compositing, contours, map furniture, and saving A0 output.
+- `scripts/paths.jl`: data locations and poster grid definitions.
+- `scripts/fetch_data.jl`: step 0, the downloads.
+- `scripts/prepare.jl`: step 1, regridding with gdalwarp, ogr2ogr and
+  gdal_rasterize.
+- `scripts/greenland.jl`, `scripts/antarctica.jl`: step 2, the poster
+  layouts.
+- `scripts/common.jl`: projection, hillshade, colour compositing, contours,
+  map furniture, and saving A0 output.
 - `scripts/labels.jl`: label styles and layouts. Both posters use `:coastal`:
   names are pushed along the coast normal, then slid along the coast to avoid
   overlaps. An alternative `:columns` layout (stacked margin columns, as in
@@ -99,9 +91,9 @@ in `source` are approximate. `tier` 1 = shown on the posters, 2 = extra detail.
 
 ## Known limitations
 
-- **Resolution:** the source fields are 8 km (16 km for Antarctic velocity and
-  basins). They are bilinearly refined for smooth rendering, but this adds no
-  detail.
-- **Greenland outside BedMachine:** ice comes from RGI at 8 km (fraction > 0.5),
-  so small glaciers are dropped. There is no velocity data there, so these ice
-  caps are shown in plain hillshade, without a velocity colour.
+- **Ice caps outside BedMachine (Greenland):** these come from RGI at 500 m
+  and have no velocity data, so they are shown in plain hillshade, without a
+  velocity colour.
+- **Velocity gaps:** MEaSUREs has gaps in places (for example parts of the
+  peripheral glaciers and some ice shelves); these are shown in plain
+  hillshade too.

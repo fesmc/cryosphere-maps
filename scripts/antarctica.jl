@@ -1,30 +1,15 @@
 # Antarctica A0 landscape poster map.
 # Usage: julia --project=. scripts/antarctica.jl [velocity|surface|bed ...]
+# Requires the prepared grid from steps 0-1 (see README).
 
 include("common.jl")
 
-const ADIR = joinpath(ICE_DATA, "Antarctica")
-const DXA  = 8.0
+const CREDITS_ANT = "Data: bed and surface topography from BedMachine Antarctica v4 (Morlighem et al., 2020); " *
+    "surface ice velocity from MEaSUREs InSAR v2 (Rignot et al., 2011); drainage basins from IMBIE 2 " *
+    "(Rignot & Mouginot); place names from the SCAR Composite Gazetteer of Antarctica. " *
+    "Polar stereographic projection (71°S, 0°E), $(round(Int, 1000GRIDS["antarctica"].dx)) m grid."
 
-const CREDITS_ANT = "Data: bed and surface topography from BedMachine Antarctica v2 (Morlighem et al., 2020; " *
-    "surface from REMA); surface ice velocity from MEaSUREs InSAR v2 (Rignot et al., 2011; 16 km); " *
-    "drainage divides from Zwally et al. (2012; 16 km); place names from the SCAR Composite Gazetteer " *
-    "of Antarctica. Polar stereographic projection (71°S, 0°E), 8 km grid."
-
-function load_antarctica()
-    f  = joinpath(ADIR, "ANT-8KM", "ANT-8KM_TOPO-BedMachine.nc")
-    x  = readaxis(f, "xc"); y = readaxis(f, "yc")
-    zs = readvar(f, "z_srf"); zb = readvar(f, "z_bed"); H = readvar(f, "H_ice")
-    mask = readvar(f, "mask")           # 0 ocean, 1 land, 2 grounded, 3 floating, 4 Lake Vostok
-    # NOTE: ANT-8KM_VEL-R11-2.nc is broken (uxy_srf, uy_srf all zero); refine 16 km field (grids align)
-    u  = refine(readvar(joinpath(ADIR, "ANT-16KM", "ANT-16KM_VEL-R11-2.nc"), "uxy_srf"), 2)
-    # NOTE: ANT-8KM_BASINS-nasa.nc is empty (all zeros); use 16 km basins regridded
-    fb = joinpath(ADIR, "ANT-16KM", "ANT-16KM_BASINS-nasa.nc")
-    basin = regrid_nn(majority_filter(readvar(fb, "basin"), 1; n=2), readaxis(fb, "xc"), readaxis(fb, "yc"), x, y)
-    ocean = mask .== 0; grounded = (mask .== 2) .| (mask .== 4)
-    r = raster_fields(x, y, zs, zb, H, ocean, mask .== 3, u; dx=DXA, f=4, zfac_ice=80, zfac_bed=6)
-    return (; x, y, grounded, basin, r, grounded_f=refine(grounded, 4))
-end
+load_antarctica() = load_prepared("antarctica"; zfac_ice=40)
 
 function plot_antarctica(d, style; labels=nothing, maxtier=1, scale=1.85)
     xmap = (-3040.0, 3040.0); ymap = (-2600.0, 2500.0)
@@ -46,14 +31,14 @@ function plot_antarctica(d, style; labels=nothing, maxtier=1, scale=1.85)
     xs = r.x[ix]; ys = r.y[iy]
 
     if style == :surface
-        contourlines!(ax, xs, ys, r.zs[ix, iy], 500:500:4000; mask=d.grounded_f[ix, iy],
+        contourlines!(ax, xs, ys, r.zs[ix, iy], 500:500:4000; mask=d.grounded[ix, iy],
                       color=(:steelblue4, 0.4), linewidth=0.9)
     end
     # ice front and grounding line
     maskoutline!(ax, xs, ys, r.ice[ix, iy]; σ=1.5, color=(:black, 0.75), linewidth=1.5)
-    maskoutline!(ax, xs, ys, d.grounded_f[ix, iy]; σ=1.5, mask=r.ice[ix, iy], color=(:gray25, 0.8), linewidth=1.2)
-    # drainage divides (Zwally basins) over grounded ice, on the native grid
-    basin_divides!(ax, d.x, d.y, d.basin, d.grounded; σ=1.5, color=(:black, 0.6), lw=2.5)
+    maskoutline!(ax, xs, ys, d.grounded[ix, iy]; σ=1.5, mask=r.ice[ix, iy], color=(:gray25, 0.8), linewidth=1.2)
+    # drainage divides over grounded ice, on the coarser basin grid
+    basin_divides!(ax, d.xb, d.yb, d.basin, d.grounded_b; σ=1.5, color=(:black, 0.6), lw=2.5)
 
     graticule!(ax, PROJ_ANT, -80:10:-60, -180:30:150; latrange=(-88, -55), color=(:gray20, 0.4), lw=1.0)
     scalebar!(ax, xmap[1] + 150, ymap[1] + 150, 1000.0; fontsize=26)

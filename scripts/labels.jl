@@ -239,13 +239,14 @@ end
 """
 Draw labels of tier <= maxtier. `layout` is :coastal (needs icemask, x, y) or
 :columns (needs xsplit, xleft, xright). `scale` multiplies all font sizes.
-Ice shelves whose connected floating area exceeds `shelf_area_min` km² (needs
+`obstacles` are extra boxes (km) to keep clear, e.g. drawn region labels. Ice shelves whose connected floating area exceeds `shelf_area_min` km² (needs
 shelfmask on the x, y grid) are labelled in place on the shelf.
 """
 function draw_labels!(ax, labs, proj; layout, kmpp, scale=1.0, maxtier=1, types=keys(LSTYLE),
                       seacolor=:white, icemask=nothing, shelfmask=nothing, x=nothing, y=nothing,
                       offset=150.0, maxlead=500.0, tmax=250.0, shelf_area_min=60_000.0,
                       xsplit=0.0, xleft=0.0, xright=0.0, colalign=:outward, elbow=50.0, limits=nothing,
+                      obstacles=Tuple[],
                       maplimits=limits)
     keep = [l for l in labs if l.tier <= maxtier && l.type in types && haskey(LSTYLE, l.type)]
     sts  = [LSTYLE[l.type] for l in keep]
@@ -258,7 +259,8 @@ function draw_labels!(ax, labs, proj; layout, kmpp, scale=1.0, maxtier=1, types=
     outer0 = [st.outer && !b for (st, b) in zip(sts, bigshelf)]
     pos, ha, outer = layout === :coastal ?
         layout_coastal(pts, wh, outer0, icemask, x, y; offset, maxlead, tmax,
-                      fixed=[boxat(pts[k], wh[k], :center) for k in eachindex(keep) if !sts[k].outer && !sts[k].marker || bigshelf[k]]) :
+                      fixed=vcat(obstacles, [boxat(pts[k], wh[k], :center) for k in eachindex(keep)
+                                             if !sts[k].outer && !sts[k].marker || bigshelf[k]])) :
         layout_columns(pts, wh, outer0; xsplit, xleft, xright, colalign)
 
     # Obstacles: outer labels at their final spots and fixed in-place labels.
@@ -276,7 +278,7 @@ function draw_labels!(ax, labs, proj; layout, kmpp, scale=1.0, maxtier=1, types=
         end
     end
     flex = [!outer[k] && (sts[k].marker || demoted[k]) for k in eachindex(keep)]
-    boxes = Tuple[]
+    boxes = Tuple[obstacles...]
     for k in eachindex(keep)
         if sts[k].marker || demoted[k]    # the symbol itself is an obstacle
             m = 5*scale*kmpp

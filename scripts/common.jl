@@ -3,8 +3,7 @@
 using CairoMakie, NCDatasets, ColorSchemes, Colors, DelimitedFiles, Statistics
 import Contour as CT
 
-const ICE_DATA = expanduser("~/models/ice_data")
-const ROOT     = normpath(joinpath(@__DIR__, ".."))
+include("paths.jl")
 
 # ---------------------------------------------------------------------------
 # Projection: ellipsoidal polar stereographic (Snyder 1987), output in km
@@ -49,63 +48,6 @@ function readvar(path, name)
 end
 
 readaxis(path, name) = NCDataset(ds -> Float64.(ds[name][:]), path)
-
-"Nearest-neighbour regrid of an integer field from a coarser grid aligned with the target."
-function regrid_nn(z, xs, ys, xt, yt)
-    dx = xs[2] - xs[1]; dy = ys[2] - ys[1]
-    out = similar(z, length(xt), length(yt))
-    for (j, y) in enumerate(yt), (i, x) in enumerate(xt)
-        is = clamp(round(Int, (x - xs[1])/dx) + 1, 1, length(xs))
-        js = clamp(round(Int, (y - ys[1])/dy) + 1, 1, length(ys))
-        out[i, j] = z[is, js]
-    end
-    return out
-end
-
-"Majority (mode) filter of an integer field, radius r cells, iterated n times; removes slivers."
-function majority_filter(z, r=1; n=2)
-    a = copy(z); nx, ny = size(a)
-    for _ in 1:n
-        b = copy(a)
-        for j in 1:ny, i in 1:nx
-            a[i, j] == 0 && continue
-            cnt = Dict{eltype(a), Int}()
-            for jj in max(j-r, 1):min(j+r, ny), ii in max(i-r, 1):min(i+r, nx)
-                v = a[ii, jj]; v == 0 && continue
-                cnt[v] = get(cnt, v, 0) + 1
-            end
-            b[i, j] = argmax(cnt)
-        end
-        a = b
-    end
-    return a
-end
-
-"""
-Bilinear refinement of a regular-grid field by integer factor f.
-Returns the refined field; use `refine_axis` for the coordinates.
-"""
-function refine(z::AbstractMatrix{<:Real}, f::Int)
-    nx, ny = size(z)
-    mx, my = (nx - 1)*f + 1, (ny - 1)*f + 1
-    out = Matrix{Float64}(undef, mx, my)
-    for j in 1:my, i in 1:mx
-        u = (i - 1)/f; v = (j - 1)/f
-        i0 = min(floor(Int, u) + 1, nx - 1); j0 = min(floor(Int, v) + 1, ny - 1)
-        a = u - (i0 - 1); b = v - (j0 - 1)
-        out[i, j] = (1-a)*(1-b)*z[i0, j0] + a*(1-b)*z[i0+1, j0] + (1-a)*b*z[i0, j0+1] + a*b*z[i0+1, j0+1]
-    end
-    return out
-end
-
-refine_axis(x, f) = collect(range(x[1], x[end], length=(length(x) - 1)*f + 1))
-
-"Refine a boolean mask via its smoothed, bilinearly interpolated indicator (> 0.5)."
-refine(m::AbstractMatrix{Bool}, f::Int; σ=0.8) = refine(gauss_smooth(Float64.(m), σ), f) .> 0.5
-
-"Nearest-neighbour refinement of an integer-valued field."
-refine_nn(z, f) = [z[(i - 1) ÷ f + 1 + ((i - 1) % f >= f/2), (j - 1) ÷ f + 1 + ((j - 1) % f >= f/2)]
-                   for i in 1:(size(z, 1) - 1)*f + 1, j in 1:(size(z, 2) - 1)*f + 1]
 
 "Separable Gaussian smoothing (sigma in grid cells), NaN-aware."
 function gauss_smooth(z, σ)
@@ -255,16 +197,30 @@ const CS_VEL = cgrad([colorant"#f3e7c4", colorant"#9fd27a", colorant"#43b8b4",
 const C_SHELF = RGBf(colorant"#b9cbdb")
 
 """
-Raster fields on the plotting grid. Hillshades are computed on the native grid
-(spacing dx km), then all fields are refined bilinearly by factor f; masks are
-refined via their indicators, which gives smooth coastlines and grounding lines.
+Raster fields for `compose`: hillshades of surface and bed (dx in km) plus
+masks derived from the prepared mask (0 ocean, 1 land, 2 grounded, 3 floating).
 """
-function raster_fields(x, y, zs, zb, H, ocean, shelf, u; dx, f=4, zfac_ice=40, zfac_bed=6)
-    hs_s = hillshade(zs, dx; zfac=zfac_ice)
-    hs_b = hillshade(zb, dx; zfac=zfac_bed)
-    return (; x=refine_axis(x, f), y=refine_axis(y, f), dx=dx/f,
-              zs=refine(zs, f), zb=refine(zb, f), u=refine(u, f), hs_s=refine(hs_s, f), hs_b=refine(hs_b, f),
-              ice=refine(H .> 0, f), ocean=refine(ocean, f), shelf=refine(shelf, f))
+function raster_fields(x, y, zs, zb, mask, u; dx, zfac_ice=40, zfac_bed=6)
+    return (; x, y, dx, zs, zb, u,
+              hs_s=hillshade(zs, dx; zfac=zfac_ice), hs_b=hillshade(zb, dx; zfac=zfac_bed),
+              ice=mask .>= 2, ocean=mask .== 0, shelf=mask .== 3)
+end
+
+"""
+Read a prepared poster grid (scripts/prepare.jl). Returns the raster fields and,
+on the basin grid, the basin ids with a matching coarse ice mask.
+"""
+function load_prepared(region; zfac_ice, zfac_bed=6)
+    f = prepared_file(region)
+    isfile(f) || error("missing $f: run steps 0-1 (see README)")
+    x = readaxis(f, "x"); y = readaxis(f, "y"); xb = readaxis(f, "xb"); yb = readaxis(f, "yb")
+    mask = NCDataset(ds -> Int.(ds["mask"][:, :]), f)
+    r = raster_fields(x, y, readvar(f, "z_srf"), readvar(f, "z_bed"), mask, readvar(f, "u");
+                      dx=x[2] - x[1], zfac_ice, zfac_bed)
+    st = round(Int, (xb[2] - xb[1])/(x[2] - x[1]))       # basin grid nodes are every st-th node
+    basin, basin_names = NCDataset(ds -> (Int.(ds["basin"][:, :]), split(ds["basin"].attrib["names"], ",")), f)
+    return (; r, xb, yb, basin, basin_names, grounded_b=(mask[1:st:end, 1:st:end] .== 2), ice_b=(mask[1:st:end, 1:st:end] .>= 2),
+              grounded=(mask .== 2), attrs=NCDataset(ds -> Dict(ds.attrib), f))
 end
 
 """
@@ -303,19 +259,22 @@ function compose(style, r; srflim=(0, 3300), bedlim=(-2000, 3000), oceanlim=(-45
     return img
 end
 
-"Centroid label (circled id) for each basin over ice."
-function basin_ids!(ax, x, y, basin, icemask; fontsize=16, color=:gray20)
+"""
+Label each basin over ice with its name, at the in-basin point nearest its
+centroid. Returns the label boxes (km) so place-name labels can avoid them.
+"""
+function basin_labels!(ax, x, y, basin, names, icemask; kmpp, fontsize=16, color=:gray20)
+    boxes = Tuple[]
     for id in sort(unique(filter(>(0), basin[icemask])))
-        m = (basin .== id) .& icemask
-        sum(m) < 30 && continue
-        I = findall(m)
+        I = findall((basin .== id) .& icemask)
+        length(I) < 30 && continue
         cx = mean(x[c[1]] for c in I); cy = mean(y[c[2]] for c in I)
-        # snap to the in-basin cell nearest the centroid
         k = argmin([hypot(x[c[1]] - cx, y[c[2]] - cy) for c in I])
-        px, py = x[I[k][1]], y[I[k][2]]
-        scatter!(ax, [px], [py]; markersize=fontsize*1.7, color=(:white, 0.75), strokecolor=color, strokewidth=1)
-        text!(ax, px, py; text=string(round(Int, id)), fontsize=fontsize*0.8, color=color, align=(:center, :center), font=:bold)
+        p = (x[I[k][1]], y[I[k][2]])
+        halotext!(ax, p[1], p[2]; text=names[id], fontsize, color, font=:bold, align=(:center, :center))
+        push!(boxes, boxat(p, textbox(names[id], fontsize, kmpp; font=:bold), :center))
     end
+    return boxes
 end
 
 # ---------------------------------------------------------------------------
