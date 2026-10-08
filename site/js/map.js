@@ -147,6 +147,9 @@
         <tr><td>Sea-level equivalent</td><td>${fmt(n.sea_level_equivalent_m, 1)} m</td></tr>
       </table></details>`;
 
+    // on small screens start with the panel folded, except the search box
+    if (el.clientWidth < 700) panel.querySelectorAll('details').forEach(d => d.open = false);
+
     function legend(i) {
       const bars = cfg.styles[i].colorbars.map(b => `
         <div class="cryo-cb-label">${b.label}</div>
