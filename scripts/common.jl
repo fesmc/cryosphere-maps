@@ -247,15 +247,20 @@ function compose(style, r; srflim=(0, 3300), bedlim=(-2000, 3000), oceanlim=(-45
     return img
 end
 
-"Label point of each basin over ice: the in-basin point nearest its centroid. Returns (name, (x, y)) pairs."
+"""
+Label point of each basin over ice: the in-basin point nearest its centroid.
+Returns (; name, p=(x, y), extent=(xmin, ymin, xmax, ymax)) per basin, the
+extent covering its ice nodes.
+"""
 function basin_label_points(x, y, basin, names, icemask)
-    out = Tuple{String, Tuple{Float64, Float64}}[]
+    out = []
     for id in sort(unique(filter(>(0), basin[icemask])))
         I = findall((basin .== id) .& icemask)
         length(I) < 30 && continue
         cx = mean(x[c[1]] for c in I); cy = mean(y[c[2]] for c in I)
         k = argmin([hypot(x[c[1]] - cx, y[c[2]] - cy) for c in I])
-        push!(out, (String(names[id]), (x[I[k][1]], y[I[k][2]])))
+        xs = extrema(x[c[1]] for c in I); ys = extrema(y[c[2]] for c in I)
+        push!(out, (; name=String(names[id]), p=(x[I[k][1]], y[I[k][2]]), extent=(xs[1], ys[1], xs[2], ys[2])))
     end
     return out
 end
@@ -266,7 +271,7 @@ label boxes (km) so place-name labels can avoid them.
 """
 function basin_labels!(ax, x, y, basin, names, icemask; kmpp, fontsize=16, color=:gray20)
     boxes = Tuple[]
-    for (name, p) in basin_label_points(x, y, basin, names, icemask)
+    for (; name, p) in basin_label_points(x, y, basin, names, icemask)
         halotext!(ax, p[1], p[2]; text=name, fontsize, color, font=:bold, align=(:center, :center))
         push!(boxes, boxat(p, textbox(name, fontsize, kmpp; font=:bold), :center))
     end

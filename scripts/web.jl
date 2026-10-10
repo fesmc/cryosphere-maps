@@ -99,6 +99,10 @@ function write_geojson(path, features)
     open(io -> JSON.json(io, Dict("type" => "FeatureCollection", "features" => features)), path, "w")
 end
 
+# full names of the IMBIE 2 Greenland regions, searchable on the web map
+const REGION_FULL = Dict("NO" => "North", "NE" => "Northeast", "SE" => "Southeast", "SW" => "Southwest",
+                         "CW" => "Central west", "NW" => "Northwest")
+
 label_props(l::PlaceLabel) = Dict("name" => l.name, "type" => l.type, "tier" => l.tier, "source" => l.source,
                                   "alt" => join(l.alt, ", "), "lat" => round(l.lat, digits=3), "lon" => round(l.lon, digits=3))
 
@@ -157,7 +161,9 @@ function build_region(region; full)
     write_geojson(joinpath(out, "divides.geojson"),
         [line_feature(basin_divide_points(d.xb, d.yb, d.basin, icemask_b; σ=1.2), Dict())])
     write_geojson(joinpath(out, "regions.geojson"),
-        [point_feature(p, Dict("name" => n)) for (n, p) in basin_label_points(d.xb, d.yb, d.basin, d.basin_names, d.ice_b)])
+        [point_feature(b.p, Dict("name" => b.name, "type" => "drainage region", "alt" => get(REGION_FULL, b.name, ""),
+                                 "extent" => [round(1e3v) for v in b.extent]))
+         for b in basin_label_points(d.xb, d.yb, d.basin, d.basin_names, d.ice_b)])
     labs = read_labels(joinpath(ROOT, "data", "labels_$(region).csv"))
     gaz  = read_labels(joinpath(REPO_PREP_DIR, "gazetteer_$(region).csv"))
     write_geojson(joinpath(out, "labels.geojson"), [point_feature(project(proj, l.lon, l.lat), label_props(l)) for l in labs])

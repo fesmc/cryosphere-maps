@@ -95,7 +95,7 @@
         vector(s.file, lineStyle('rgba(29,78,137,0.8)', 1.6, s.dash)))}),
       regions: vector('regions.geojson', f => new ol.style.Style({text: new ol.style.Text({
         text: f.get('name'), font: 'bold 22px sans-serif', fill: new ol.style.Fill({color: 'rgba(40,40,40,0.8)'}),
-        stroke: new ol.style.Stroke({color: 'rgba(255,255,255,0.8)', width: 4})})}), {declutter: 'names'}),
+        stroke: new ol.style.Stroke({color: 'rgba(255,255,255,0.8)', width: 4})})}), {declutter: 'regions'}),
       names: vector('labels.geojson', (f, res) => f.get('tier') > 1 && res > TIER2_RES ? null : labelStyle(f),
                     {declutter: 'names', names: true}),
       gazetteer: vector('gazetteer.geojson', labelStyle, {declutter: 'names', names: true, maxResolution: GAZ_RES}),
@@ -117,7 +117,9 @@
                                  `${fmt(Math.abs(c[0]), 2)}°${c[0] >= 0 ? 'E' : 'W'}`}),
       ]),
     });
-    view.fit(cfg.extent, {padding: [10, el.clientWidth > 900 ? 320 : 10, 10, 10]});
+    // keep clear of the control panel on wide screens
+    const fitPadding = () => [10, el.clientWidth > 900 ? 320 : 10, 10, 10];
+    view.fit(cfg.extent, {padding: fitPadding()});
     el.olMap = map;                      // for debugging from the console
 
     // --- popup with name details
@@ -173,23 +175,26 @@
     panel.querySelectorAll('input[data-layer]').forEach(c => c.addEventListener('change', () =>
       overlays[c.dataset.layer].setVisible(c.checked)));
 
-    // --- name search over the label CSV and the gazetteer
+    // --- name search over the label CSV, the gazetteer and the drainage regions
     const index = [];
-    Promise.all(['labels.geojson', 'gazetteer.geojson'].map(f => fetch(base + f).then(r => r.json()))).then(cs => {
-      const names = new Set();
+    Promise.all(['labels.geojson', 'gazetteer.geojson', 'regions.geojson'].map(f => fetch(base + f).then(r => r.json()))).then(cs => {
+      const names = new Map();           // name => option label (regions only)
       cs.forEach(c => c.features.forEach(ft => {
         const p = ft.properties;
         [p.name, ...(p.alt ? p.alt.split(', ') : [])].forEach(nm => index.push({key: nm.toLowerCase(), ft}));
-        names.add(p.name);
+        names.set(p.name, p.type === 'drainage region' ? `${p.alt || p.name}, drainage region` : '');
       }));
-      panel.querySelector('#cryo-names').innerHTML = [...names].sort().map(s => `<option value="${s}">`).join('');
+      panel.querySelector('#cryo-names').innerHTML = [...names].sort(([a], [b]) => a.localeCompare(b))
+        .map(([s, l]) => `<option value="${s}"${l ? ` label="${l}"` : ''}>`).join('');
     });
     panel.querySelector('.cryo-search').addEventListener('change', e => {
       const q = e.target.value.trim().toLowerCase();
       const hit = index.find(h => h.key === q) || index.find(h => h.key.includes(q));
       if (!hit) return;
-      const f = gj.readFeature(hit.ft);
       overlay.setPosition(undefined);
+      // regions: zoom to their extent
+      if (hit.ft.properties.extent) return view.fit(hit.ft.properties.extent, {padding: fitPadding(), duration: 800});
+      const f = gj.readFeature(hit.ft);
       view.animate({center: f.getGeometry().getCoordinates(), resolution: Math.min(view.getResolution(), 400), duration: 800},
                    () => showPopup(f));
     });
