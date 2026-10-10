@@ -58,13 +58,29 @@ const LSTYLE_VINTAGE = Dict(
 # Raster and sea
 # ---------------------------------------------------------------------------
 
-"Smooth multi-scale noise in about [-1, 1], for the mottling of the paper."
-function paper_noise(nx, ny; seed=3)
+"""
+Smooth multi-scale noise in about [-1, 1] on an nx × ny grid of spacing dx km,
+for the mottling of the paper: scales of 70, 18 and 3.5 pt on the poster
+(`kmpp` km per pt), made on a grid of about 1 pt and interpolated bilinearly,
+so the mottling is the same at all grid resolutions.
+"""
+function paper_noise(nx, ny, dx, kmpp; seed=3)
     rng = MersenneTwister(seed)
-    n = zeros(nx, ny)
-    for (σ, w) in ((40.0, 0.5), (10.0, 0.3), (2.0, 0.2))
-        a = gauss_smooth(randn(rng, nx, ny), σ)
-        n .+= w .* a ./ maximum(abs, a)
+    st = max(1, floor(Int, kmpp/dx))
+    mx, my = cld(nx - 1, st) + 1, cld(ny - 1, st) + 1
+    m = zeros(mx, my)
+    for (σpt, w) in ((70.0, 0.5), (18.0, 0.3), (3.5, 0.2))
+        a = gauss_smooth(randn(rng, mx, my), σpt*kmpp/(st*dx))
+        m .+= w .* a ./ maximum(abs, a)
+    end
+    st == 1 && return m
+    n = Matrix{Float64}(undef, nx, ny)
+    for j in 1:ny, i in 1:nx
+        fi, fj = (i - 1)/st, (j - 1)/st
+        i0, j0 = floor(Int, fi) + 1, floor(Int, fj) + 1
+        i1, j1 = min(i0 + 1, mx), min(j0 + 1, my)
+        ti, tj = fi - (i0 - 1), fj - (j0 - 1)
+        n[i, j] = (1 - ti)*(1 - tj)*m[i0, j0] + ti*(1 - tj)*m[i1, j0] + (1 - ti)*tj*m[i0, j1] + ti*tj*m[i1, j1]
     end
     return n
 end
@@ -74,9 +90,9 @@ RGB image in inks on paper: the sea tinted by depth (lighter where `pack` marks
 the winter pack ice), ice in cream with the hillshade, fast ice in rust to
 oxblood, rock in sepia.
 """
-function compose_vintage(r, pack)
+function compose_vintage(r, pack, kmpp)
     nx, ny = size(r.zs)
-    nz = paper_noise(nx, ny)
+    nz = paper_noise(nx, ny, r.dx, kmpp)
     img = Matrix{RGBf}(undef, nx, ny)
     for j in 1:ny, i in 1:nx
         ice, ocean = r.ice[i, j], r.ocean[i, j] && !r.ice[i, j]
@@ -276,10 +292,10 @@ function vintage_map!(ax, d, region; limits, kmpp, scale, proj, labels, routes, 
     xs = r.x[ix]; ys = r.y[iy]; h = r.dx/2
     edge = geojson_lines(joinpath(REPO_PREP_DIR, "seaice_$(region)_$(seaice).geojson"))
     pack = pack_ice(r, edge, seeds)
-    img = compose_vintage(r, pack)
+    img = compose_vintage(r, pack, kmpp)
     image!(ax, (xs[1] - h, xs[end] + h), (ys[1] - h, ys[end] + h), img[ix, iy]; interpolate=true)
 
-    dist = gauss_smooth(distance_km(.!(r.ocean .& .!r.ice), r.dx), 1.5)
+    dist = gauss_smooth(distance_km(.!(r.ocean .& .!r.ice), r.dx), 2.7kmpp/r.dx)     # smoothed over ~3 pt
     water_lines!(ax, xs, ys, dist[ix, iy])
     sea_marks!(ax, r, dist, pack, limits)
     lines!(ax, edge; color=(SEA_INK, 0.7), linewidth=2.0, linestyle=:dash)

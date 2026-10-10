@@ -5,7 +5,7 @@
 #   <region>/*.geojson                       contours, ice margin, divides, names, sea-ice edges
 #   <region>/config.json                     tile grid, projection, colour bars, key numbers
 #   img/, posters/                           the small poster PNGs; PDFs and full PNGs
-# and site/_gallery.md, the poster gallery of the home page.
+# and site/_gallery*.md, the poster galleries of the home, paleo and historical pages.
 #
 # Usage: julia --project=. scripts/web.jl [full] [greenland] [antarctica] [gallery]
 # `full` uses the full-resolution grids in $CRYOMAPS_DATA (on albedo:
@@ -190,7 +190,8 @@ end
 # readable descriptions of the parts of poster file names
 const NAME_PARTS = Dict("velocity" => "ice velocity", "surface" => "surface elevation", "bed" => "bed topography",
     "dark" => "dark ocean", "nocontours" => "no contours", "ember" => "ember colours", "batlow" => "batlow colours",
-    "lajolla" => "lajolla colours", "tier2" => "more names", "custom" => "added names")
+    "lajolla" => "lajolla colours", "tier2" => "more names", "custom" => "added names",
+    "vintage" => "old-world style")
 
 const REGION_NAMES = Dict("greenland" => "Greenland", "antarctica" => "Antarctica", "nh" => "Northern Hemisphere")
 
@@ -238,8 +239,8 @@ end
 Copy the poster files to the site (small PNGs to assets/img/, the PDFs and
 full PNGs of the default posters to assets/posters/) and write the galleries:
 site/_gallery.md (included by index.qmd) with the default posters and their
-downloads, then the variants, and site/_gallery_paleo.md (paleo.qmd) with the
-paleo maps.
+downloads, then the variants, site/_gallery_paleo.md (paleo.qmd) with the
+paleo maps and site/_gallery_vintage.md (historical.qmd) with the vintage maps.
 """
 function build_gallery()
     for d in (joinpath(ASSETS, "img"), joinpath(ASSETS, "posters"))
@@ -251,6 +252,8 @@ function build_gallery()
     write(joinpath(SITE, "_gallery.md"), take!(md))
     gallery_section!(md, joinpath(ROOT, "plots", "paleo"), "Maps"; cols=6, pnglink=true)
     write(joinpath(SITE, "_gallery_paleo.md"), take!(md))
+    gallery_section!(md, joinpath(ROOT, "plots", "vintage"), "Maps"; cols=6)
+    write(joinpath(SITE, "_gallery_vintage.md"), take!(md))
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__

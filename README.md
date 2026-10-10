@@ -267,7 +267,8 @@ julia --project=. scripts/vintage.jl antarctica
 ```
 → `plots/vintage/antarctica_A0_vintage_coarse_small.png`. Options: `greenland`
 or `antarctica`, `noroutes`, `nofauna`, and `full` and `pdf` as for the
-posters.
+posters. On albedo, `sbatch jobs/vintage.sh` makes both at full resolution; the
+website shows them on the Historical page.
 
 ## Scripts
 

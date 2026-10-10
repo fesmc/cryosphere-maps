@@ -20,6 +20,8 @@ website:
         text: Antarctica
       - href: paleo.qmd
         text: Paleo
+      - href: historical.qmd
+        text: Historical
       - href: about.qmd
         text: Data & methods
     right:

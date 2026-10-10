@@ -1,0 +1,44 @@
+---
+title: "Historical maps"
+---
+
+The ice sheets drawn as old charts, from the same data as the posters: ice flow
+in rust to oxblood over the hillshaded surface, water lining along the coasts,
+waves on the sea beyond the median winter sea-ice edge and floes inside it. On
+them are the routes of historical expeditions and where penguins breed and
+Arctic animals gather. The Greenland map uses Greenlandic (kalaallisut) names
+and terms: *Kalaallit Nunaat* is Greenland, "the land of the Greenlanders", and
+*Sermersuaq* the ice sheet.
+
+{{< include _gallery_vintage.md >}}
+
+## Routes
+
+The routes are transcribed from the expedition accounts and published
+positions; every point and its source are listed in
+[`data/routes_antarctica.csv`](https://github.com/fesmc/cryosphere-maps/blob/main/data/routes_antarctica.csv)
+and
+[`data/routes_greenland.csv`](https://github.com/fesmc/cryosphere-maps/blob/main/data/routes_greenland.csv).
+
+- **Along the route** (camp and noon positions): Amundsen 1911–12 (*The South
+  Pole*; Lantz, 2022, for the plateau), Scott 1911–12 (*Scott's Last
+  Expedition*; Debenham, 1923), Shackleton 1908–09 (*The Heart of the
+  Antarctic*) and the drift of the *Endurance* and the boat journey to
+  Elephant Island 1915–16 (*South*; Worsley's log). Some longitudes are inferred
+  from the stated course, as noted in the files.
+- **Documented places only**, joined by arcs to show that the route between
+  them is simplified: Mawson 1912–13, Fuchs–Hillary 1957–58, and in Greenland
+  Nansen 1888, Peary 1892, the Danmark Expedition 1906–08, Koch–Wegener
+  1912–13, Wegener 1930–31, the British Arctic Air Route Expedition 1930–31
+  and the Expéditions Polaires Françaises 1949–51.
+
+## Wildlife
+
+- Emperor penguin colonies in 2023 (Fretwell, 2024, UK Polar Data Centre,
+  doi:[10.5285/fb0547e4-d2c1-4580-8c98-182f1da7d9ae](https://doi.org/10.5285/fb0547e4-d2c1-4580-8c98-182f1da7d9ae)).
+- Adélie penguin colonies from MAPPPD (Humphries et al., 2017,
+  [penguinmap.com](https://www.penguinmap.com)), grouped within 100 km.
+- Greenland: polar bear denning, musk-ox calving, walrus haul-out and narwhal
+  summer areas from the Areas Important to Wildlife (Greenland Institute of
+  Natural Resources and DCE, Aarhus University), one sign per area, grouped
+  within 100 km.
