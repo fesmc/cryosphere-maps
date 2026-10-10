@@ -29,6 +29,39 @@ Peninsula; for Greenland the ice sheet without the peripheral ice caps). These
 polygons cover the grounded ice, so ice outside them (ice shelves, islands, the
 ice margin) is given to the nearest region.
 
+## Place names in Greenland
+
+The maps give the Greenlandic name of a place first, with its historical name
+in parentheses (e.g., "Nuuk (Godthåb)", "Sermeq Kujalleq (Jakobshavn
+Isbræ)"). Since 1996, only Greenlandic names are standardised in Greenland, by
+the Greenland Place Name Committee at the Language Secretariat,
+[Oqaasileriffik](https://oqaasileriffik.gl). Many glaciers, however, are still
+known by the Danish names of the colonial period and the early expeditions,
+which are used throughout the scientific literature. Showing both names puts
+the official name first, while the historical name links the map to the
+literature.
+
+Most names come from [GeoNames](https://www.geonames.org), which usually lists
+the Danish name first and the Greenlandic name, where known, among the
+alternate names. We chose the Greenlandic names by hand, since an automatic
+choice was not reliable: GeoNames marks few names by language, and many of its
+Greenlandic names are in the orthography used before 1973. A Greenlandic name
+was added only where GeoNames or Wikipedia gives it in the modern orthography.
+Where GeoNames itself lists a Greenlandic name first, it is kept as given.
+Features without a known Greenlandic name keep their Danish or English name.
+This is the case for most of northern and northeastern Greenland, where nearly
+all names were given by expeditions (e.g., "Petermann Gletscher", "Zachariæ
+Isstrøm"). Note that "Gletscher" is the older Danish spelling of "glacier"
+(modern Danish "gletsjer"), not German. The open seas keep their English names,
+while bays along the coast take their Greenlandic names (e.g., "Qimusseriarsuaq
+(Melville Bay)").
+
+The official register of the Place Name Committee holds about 33,000 names,
+but it is not available for download. We will use it once it is
+([issue #2](https://github.com/fesmc/cryosphere-maps/issues/2)). The names
+chosen here are listed in `data/labels_greenland.csv` (poster labels) and
+`data/greenlandic_names.csv` (glaciers of the gazetteer) in the repository.
+
 ## Paleo maps
 
 The [paleo maps](paleo.qmd) show the ice sheets at the Last Glacial Maximum
@@ -83,7 +116,9 @@ the posters (EPSG:3413 and EPSG:3031), so nothing is reprojected in the browser.
   tier 2 and the gazetteer as you zoom in; OpenLayers leaves out labels that
   would overlap. Clicking a name shows its other names, position and source.
 - **Search.** The search box suggests all names. A name is matched on any of
-  its names (ignoring case), and the map zooms to it.
+  its names (ignoring case), and the map zooms to it. The drainage regions can
+  be found by their label (e.g., "NW") or, for Greenland, by their full name
+  ("Northwest"), and the map zooms to the whole region.
 
 The site is published as a single commit of the `gh-pages` branch, replaced at
 each update, so the tiles and PDFs do not build up a history in the repository.
