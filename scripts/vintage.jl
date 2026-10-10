@@ -30,8 +30,11 @@ const FLOW_LIM = (0.6, 3.3)                    # log10 speed range of CS_FLOW
 const V_ROUTE_COLORS = [RED_INK, colorant"#1f3f6b", colorant"#4d5d24", colorant"#6a2c5e", colorant"#5a3a1a",
                         colorant"#2e6b6b", colorant"#a0522d", colorant"#4b3b7a"]
 
-"Sea names in spaced capitals."
-spaced(s) = join([join(collect(uppercase(w)), ' ') for w in split(s)], "   ")
+"Sea names in spaced capitals, one word per line for names of more than `maxlen` letters."
+function spaced(s; maxlen=12)
+    words = [join(collect(uppercase(w)), ' ') for w in split(s)]
+    return join(words, count(isletter, s) > maxlen ? "\n" : "   ")
+end
 
 const LSTYLE_VINTAGE = Dict(
     "region"     => (size=22, font=VF.caps,    color=INK,     case=uppercase, outer=false, marker=false),
@@ -204,6 +207,13 @@ end
 # Map furniture
 # ---------------------------------------------------------------------------
 
+"Map angle (degrees clockwise from up) of true north at the projected point (x, y) km."
+function north_angle(proj, x, y)
+    lon, lat = unproject(proj, x, y)
+    q = project(proj, lon, lat + 0.1)
+    return rad2deg(atan(q[1] - x, q[2] - y))
+end
+
 "Eight-point compass rose centred at (x, y) km with radius R km; `north` is the map angle of north (degrees)."
 function compass_rose!(ax, x, y, R; north=0.0, fontsize=40)
     for (k, θ) in enumerate(0:45:315)
@@ -283,7 +293,7 @@ function vintage_map!(ax, d, region; limits, kmpp, scale, proj, labels, routes, 
     lines!(ax, [inside(p) ? p : Point2f(NaN, NaN) for p in circle]; color=(RED_INK, 0.6), linewidth=1.6)
 
     frame = neatline!(ax, limits; bar)
-    obstacles = vcat(frame, [compass_rose!(ax, rose...)])
+    obstacles = vcat(frame, [compass_rose!(ax, rose...; north=north_angle(proj, rose[1], rose[2]))])
     scalebar!(ax, scalebar..., region == "greenland" ? 400.0 : 1000.0; fontsize=26, color=INK, font=VF.regular,
               ink=INK, paper=PAPER)
     url = site_url!(ax, limits, kmpp; corner=:right, fontsize=24, margin=40, font=VF.italic, color=(INK, 0.7))
@@ -304,7 +314,9 @@ function vintage_map!(ax, d, region; limits, kmpp, scale, proj, labels, routes, 
                  (LineElement(color=(SEPIA, 0.5), linewidth=1.0), "1000 m surface contours"),
                  (LineElement(color=(SEA_INK, 0.7), linewidth=2.0, linestyle=:dash),
                   "Sea-ice edge, $(MONTHS[parse(Int, seaice)])"),
-                 (MarkerElement(marker=G_WAVE, color=(SEPIA, 0.7), markersize=30), "Open sea in winter")],
+                 (MarkerElement(marker=G_WAVE, color=(SEPIA, 0.7), markersize=30), "Open sea in winter"),
+                 (MarkerElement(marker=:hexagon, color=(:white, 0.9), strokecolor=(INK, 0.55), strokewidth=0.9,
+                                markersize=12), "Pack ice in winter")],
                 rlegend, flegend)
 end
 
@@ -338,7 +350,7 @@ function plot_vintage_antarctica(d; labels, routes, fauna, scale=1.85)
     legend = vintage_map!(ax, d, "antarctica"; limits, kmpp, scale, proj=PROJ_ANT, labels=labs, routes, fauna,
                           seaice="09", seeds=[(-3000.0, 3000.0), (3000.0, 3000.0)],
                           graticule=(lats=-85:5:-60, lons=-180:15:165, latrange=(-88, -55)),
-                          rose=(-2560.0, -1900.0, 260.0), scalebar=(xmap[1] + 200, ymap[1] + 180), bar=200.0)
+                          rose=(-2420.0, -1780.0, 260.0), scalebar=(xmap[1] + 200, ymap[1] + 180), bar=200.0)
 
     side = fig[1, 2] = GridLayout(width=panel)
     Label(side[1, 1], "Terra\nAustralis"; font=VF.caps, fontsize=110, color=INK, lineheight=0.9)

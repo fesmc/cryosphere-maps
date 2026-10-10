@@ -171,11 +171,14 @@ function leader!(ax, xs, ys; lw, color=(:black, 0.75), casing=(:white, 0.7))
     lines!(ax, xs, ys; color, linewidth=lw)
 end
 
-"Text box (width, height) in km, measured with Makie's text layout for a theme font (Symbol) or a font file."
+"""
+Text box (width, height) in km of a text of one or more lines, measured with
+Makie's text layout for a theme font (Symbol) or a font file.
+"""
 function textbox(txt, size, kmpp; font=:regular)
     ft = Makie.to_font(font isa Symbol ? Makie.theme(:fonts)[font][] : font)
-    w = Makie.widths(Makie.text_bb(txt, ft, Float32(size)))[1]
-    return (w*kmpp, 1.15*size*kmpp)
+    w = maximum(Makie.widths(Makie.text_bb(ln, ft, Float32(size)))[1] for ln in split(txt, '\n'))
+    return (w*kmpp, 1.15*size*kmpp*(count(==('\n'), txt) + 1))
 end
 
 "Box (xmin, xmax, ymin, ymax) for text at q with horizontal alignment ha."
