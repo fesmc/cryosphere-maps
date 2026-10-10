@@ -338,7 +338,7 @@ function plot_vintage_antarctica(d; labels, routes, fauna, scale=1.85)
     legend = vintage_map!(ax, d, "antarctica"; limits, kmpp, scale, proj=PROJ_ANT, labels=labs, routes, fauna,
                           seaice="09", seeds=[(-3000.0, 3000.0), (3000.0, 3000.0)],
                           graticule=(lats=-85:5:-60, lons=-180:15:165, latrange=(-88, -55)),
-                          rose=(2560.0, -2080.0, 260.0), scalebar=(xmap[1] + 200, ymap[1] + 180), bar=200.0)
+                          rose=(-2560.0, -1900.0, 260.0), scalebar=(xmap[1] + 200, ymap[1] + 180), bar=200.0)
 
     side = fig[1, 2] = GridLayout(width=panel)
     Label(side[1, 1], "Terra\nAustralis"; font=VF.caps, fontsize=110, color=INK, lineheight=0.9)
