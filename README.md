@@ -6,7 +6,9 @@ contours, the median sea-ice edge, key numbers and place names. Julia +
 CairoMakie, with GDAL (via `GDAL_jll`) for regridding. All input data are
 downloaded by the pipeline itself (step 0). An interactive version is on
 <https://fesmc.github.io/cryosphere-maps/> (step 3). Maps of the ice sheets at
-the Last Glacial Maximum are made the same way (see [Paleo maps](#paleo-maps)).
+the Last Glacial Maximum are made the same way (see [Paleo maps](#paleo-maps)),
+and old-world style maps with expedition routes and wildlife from the same data
+(see [Vintage maps](#vintage-maps)).
 
 **Quick start:** the repo contains the poster grids at every 4th node
 (`data/prepared/`), enough for the 1600 px sharing PNGs. After the setup below,
@@ -80,7 +82,21 @@ north of 24°N (OPeNDAP subsets).
 The label CSVs have columns `name, lat, lon, type, source, tier`. Entries
 marked `unverified` in `source` are approximate. `tier` 1 = shown on the
 posters, 2 = extra detail. The gazetteers (`data/prepared/gazetteer_*.csv`,
-tier 3) also list other names of each feature (`alt`).
+tier 3) also list other names of each feature (`alt`). `labels_greenland.csv`
+also has Greenlandic names (`kl`, from GeoNames), used by the vintage map.
+
+Overlays (options `routes` and `fauna`, and the vintage maps):
+
+| Overlay | Source |
+|---|---|
+| Expedition routes | `data/routes_{greenland,antarctica}.csv`, transcribed from the expedition accounts and published positions, with the source of each point (`source`, `quote`, `note`). `track`: `camps` (positions along the route) or `waypoints` (documented places only, drawn as arcs). Rows with `seq` 0 are places off the track |
+| Emperor penguin colonies | BAS 2023 colony locations (Fretwell, 2024, UK PDC, doi:10.5285/fb0547e4-d2c1-4580-8c98-182f1da7d9ae) |
+| Adélie penguin colonies | MAPPPD (Humphries et al., 2017, www.penguinmap.com), grouped within 100 km |
+| Greenland wildlife | Areas Important to Wildlife (GINR/DCE): polar bear denning, musk-ox calving, walrus haul-outs, narwhal summer areas, one point per area, grouped within 100 km |
+
+The wildlife points (`data/prepared/fauna_*.csv`) are made with
+`julia --project=. scripts/fetch_data.jl fauna` and
+`julia --project=. scripts/prepare_overlays.jl`.
 
 ## Steps
 
@@ -140,6 +156,8 @@ run as SLURM jobs from the repo root, with logs in `logs/`.
      label of the CSV are flagged as possible duplicates.
    - **`list`** or **`list=<text>`:** print the available names (containing
      `<text>`) and exit, e.g. `julia --project=. scripts/greenland.jl list=isbrae`.
+   - **`routes`**, **`fauna`:** add the expedition routes and the wildlife
+     (see the overlays above).
    - **`full`:** full-resolution grid from `$CRYOMAPS_DATA`, and PDF + PNG
      output.
    - **`pdf`:** PDF + PNG output from the coarse grid in the repo (2 km / 4 km
@@ -236,6 +254,21 @@ julia --project=. scripts/paleo.jl nh time=20 surface
 posters. Labels come from `data/labels_paleo_nh.csv` (ice sheets, seas) and,
 for Antarctica, the regions and seas of `data/labels_antarctica.csv`.
 
+## Vintage maps
+
+The same data as the posters, drawn as an old chart: inks on paper, ice flow in
+rust to oxblood, water lining along the coasts, waves on the sea beyond the
+median winter sea-ice edge and floes inside it, expedition routes, wildlife,
+a compass rose and a neatline. The Greenland map uses Greenlandic names where
+the label CSV has them (`kl`). Fonts: IM Fell English (SIL Open Font License,
+`data/fonts/`).
+```bash
+julia --project=. scripts/vintage.jl antarctica
+```
+→ `plots/vintage/antarctica_A0_vintage_coarse_small.png`. Options: `greenland`
+or `antarctica`, `noroutes`, `nofauna`, and `full` and `pdf` as for the
+posters.
+
 ## Scripts
 
 - `scripts/paths.jl`: data locations and poster grid definitions.
@@ -254,6 +287,9 @@ for Antarctica, the regions and seas of `data/labels_antarctica.csv`.
   columns, as in Rignot & Mouginot 2012) is also available.
 - `scripts/prepare_paleo.jl`, `scripts/paleo.jl`, `jobs/paleo.sh`: the paleo
   grids and maps (see [Paleo maps](#paleo-maps)).
+- `scripts/overlays.jl`: expedition routes and wildlife glyphs;
+  `scripts/prepare_overlays.jl`: the wildlife points.
+- `scripts/vintage.jl`: the vintage maps (see [Vintage maps](#vintage-maps)).
 - `scripts/smooth.jl`: Gaussian smoothing of grids.
 - `scripts/web.jl`: step 3, the web map assets and the poster galleries.
 - `site/`: the Quarto website; `site/js/map.js` is the interactive map,
