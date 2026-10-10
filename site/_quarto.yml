@@ -27,6 +27,8 @@ website:
     right:
       - icon: github
         href: https://github.com/fesmc/cryosphere-maps
+  page-footer:
+    center: "Cryosphere maps [v{{< var version >}}](https://github.com/fesmc/cryosphere-maps/tree/v{{< var version >}})"
 
 format:
   html:
