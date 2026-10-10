@@ -17,13 +17,18 @@ struct PlaceLabel
     alt::Vector{String}    # other names (for searching)
 end
 
-"Read a label CSV (columns name, lat, lon, type, source, tier and optionally alt, |-separated)."
-function read_labels(path)
+"""
+Read a label CSV (columns name, lat, lon, type, source, tier and optionally alt,
+|-separated). `namecol` names a column of names to use instead of `name` where
+it is not empty (e.g. "kl", the Greenlandic names).
+"""
+function read_labels(path; namecol="name")
     d, h = readdlm(path, ',', Any; header=true, quotes=true)
     col(n, default) = (i = findfirst(==(n), vec(h)); i === nothing ? fill(default, size(d, 1)) : d[:, i])
     str(v) = strip(string(v))
-    return [PlaceLabel(str(n), Float64(lon), Float64(lat), str(t), Int(tier), str(src), filter(!isempty, split(str(alt), "|")))
-            for (n, lat, lon, t, src, tier, alt) in zip(col("name", ""), col("lat", 0), col("lon", 0), col("type", ""),
+    names = [isempty(str(o)) ? str(n) : str(o) for (n, o) in zip(col("name", ""), col(namecol, ""))]
+    return [PlaceLabel(n, Float64(lon), Float64(lat), str(t), Int(tier), str(src), filter(!isempty, split(str(alt), "|")))
+            for (n, lat, lon, t, src, tier, alt) in zip(names, col("lat", 0), col("lon", 0), col("type", ""),
                                                         col("source", ""), col("tier", 1), col("alt", ""))]
 end
 
@@ -520,7 +525,7 @@ function draw_labels!(ax, labs, proj; layout, kmpp, scale=1.0, maxtier=1, styles
             end
             scatter!(ax, [p]; markersize=3.5*scale, color=ink)
         elseif st.marker
-            mk = l.type == "icecore" ? :diamond : (l.type == "dome" ? :utriangle : :circle)
+            mk = l.type == "icecore" ? :diamond : l.type == "dome" ? :utriangle : l.type == "pole" ? :star5 : :circle
             scatter!(ax, [p]; markersize=8*scale, marker=mk, color=col, strokecolor=paper, strokewidth=0.8*scale)
         elseif demoted[k]
             scatter!(ax, [p]; markersize=4*scale, color=ink)

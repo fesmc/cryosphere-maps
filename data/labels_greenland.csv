@@ -1,70 +1,70 @@
-name,lat,lon,type,source,tier
-Sermeq Kujalleq (Jakobshavn),69.17,-49.6,glacier,GeoNames (adj. to trunk),1
-Petermann Gletscher,80.4,-59.5,glacier,GeoNames (adj. to trunk),1
-Humboldt Gletscher,79.5,-63.0,glacier,GeoNames,1
-Ryder Gletscher,81.6,-49.5,glacier,GeoNames (adj.),1
-C.H. Ostenfeld Gletscher,81.7,-44.2,glacier,GeoNames,2
-Nioghalvfjerdsfjorden (79N),79.45,-23.0,glacier,GeoNames (adj. to grounding line),1
-Zachariæ Isstrøm,78.85,-22.6,glacier,GeoNames (adj. to grounding line),1
-Storstrømmen,77.1,-23.0,glacier,GeoNames (adj.),1
-NEGIS,77.3,-30.0,glacier,unverified (mid-trunk from velocity maps),1
-Helheim Gletscher,66.4,-38.4,glacier,GeoNames (adj. to trunk),1
-Kangerlussuaq Gletscher,68.65,-33.2,glacier,GeoNames (adj. to trunk),1
-Daugaard-Jensen Gletscher,71.85,-29.0,glacier,GeoNames (adj.),1
-Upernavik Isstrøm,72.95,-54.2,glacier,GeoNames (adj. to trunk),1
-Rink Isbræ,71.75,-51.0,glacier,GeoNames (adj. to trunk),2
-Kong Oscar Gletscher,76.05,-59.5,glacier,GeoNames (adj. to trunk),2
-Steenstrup Gletscher,75.3,-57.4,glacier,GeoNames (adj. to trunk),2
-Tracy Gletscher,77.65,-65.7,glacier,GeoNames (adj. to trunk),2
-Hayes Gletscher,74.95,-56.9,glacier,GeoNames,2
-Køge Bugt Gletscher,65.15,-41.2,glacier,unverified (inland of GeoNames bay 64.99/-40.68),2
-Ikertivaq Gletscher,65.6,-39.9,glacier,unverified (head of GeoNames fjord 65.48/-39.67),2
-Midgård Gletscher,66.42,-37.0,glacier,GeoNames (adj.),2
-Store Gletscher,70.4,-50.4,glacier,GeoNames (adj. to trunk),2
-Kangiata Nunaata Sermia,64.3,-49.4,glacier,unverified,2
-Sermeq Avannarleq,69.4,-50.25,glacier,GeoNames (Ilulissat area one),2
-Camp Century,77.17,-61.13,icecore,NOAA/PANGAEA,1
-NEEM,77.45,-51.06,icecore,NEEM project,1
-NGRIP,75.1,-42.32,icecore,Copernicus CP table,1
-GRIP,72.58,-37.64,icecore,Copernicus CP table,1
-GISP2,72.6,-38.5,icecore,unverified (standard 72°36'N 38°30'W),1
-EastGRIP,75.63,-35.99,icecore,DEIMS site record,1
-Dye-3,65.18,-43.83,icecore,Copernicus CP table / Wikipedia,1
-Renland,71.27,-26.73,icecore,Copernicus CP table,2
-Summit Station,72.58,-38.46,station,GeoNames,2
-Nuuk,64.18,-51.72,settlement,GeoNames,1
-Ilulissat,69.22,-51.1,settlement,GeoNames,1
-Kangerlussuaq,67.01,-50.69,settlement,GeoNames,1
-Tasiilaq,65.62,-37.64,settlement,GeoNames,1
-Qaanaaq,77.47,-69.23,settlement,GeoNames,1
-Ittoqqortoormiit,70.49,-21.96,settlement,GeoNames,2
-Upernavik,72.78,-56.15,settlement,GeoNames,2
-Narsarsuaq,61.16,-45.43,settlement,GeoNames,2
-Pituffik (Thule),76.53,-68.7,settlement,GeoNames,1
-Danmarkshavn,76.77,-18.67,station,GeoNames,2
-Station Nord,81.6,-16.67,station,GeoNames,2
-Baffin Bay,73.5,-64.0,sea,unverified (open water),1
-Davis Strait,66.5,-57.5,sea,unverified (open water),1
-Labrador Sea,59.5,-52.0,sea,unverified (open water),1
-Irminger Sea,62.0,-36.0,sea,unverified (open water),1
-Denmark Strait,66.5,-27.0,sea,unverified (open water),1
-Greenland Sea,75.0,-10.0,sea,unverified (open water),1
-Fram Strait,79.5,-5.0,sea,unverified (open water),1
-Lincoln Sea,83.0,-58.0,sea,GeoNames,2
-Nares Strait,80.3,-67.5,sea,unverified (Kennedy Channel),2
-Arctic Ocean,85.0,-25.0,sea,unverified (open water),1
-Disko Bay,69.15,-52.1,sea,GeoNames,2
-Melville Bay,75.78,-61.28,sea,GeoNames,2
-Peary Land,82.63,-32.5,region,GeoNames,1
-Kronprins Christian Land,80.5,-22.0,region,GeoNames,1
-Germania Land,77.13,-20.04,region,GeoNames,2
-Knud Rasmussen Land,80.0,-57.0,region,GeoNames,1
-Inglefield Land,78.64,-69.99,region,GeoNames,2
-Washington Land,80.25,-66.0,region,GeoNames,2
-Jameson Land,71.17,-23.5,region,GeoNames,2
-Disko Island (Qeqertarsuaq),69.75,-53.5,island,Wikipedia,1
-Milne Land,70.68,-26.75,island,GeoNames,1
-Scoresby Sund (Kangertittivaq),70.3,-23.5,fjord,GeoNames (adj. to open water),1
-Kangerlussuaq Fjord,68.38,-32.25,fjord,GeoNames (east coast fjord),2
-Ilulissat Icefjord,69.17,-50.5,fjord,GeoNames,2
-Nuup Kangerlua (Godthåbsfjord),64.5,-51.38,fjord,GeoNames,2
+name,lat,lon,type,source,tier,kl
+Sermeq Kujalleq (Jakobshavn),69.17,-49.6,glacier,GeoNames (adj. to trunk),1,
+Petermann Gletscher,80.4,-59.5,glacier,GeoNames (adj. to trunk),1,
+Humboldt Gletscher,79.5,-63.0,glacier,GeoNames,1,Sermersuaq (Humboldt)
+Ryder Gletscher,81.6,-49.5,glacier,GeoNames (adj.),1,
+C.H. Ostenfeld Gletscher,81.7,-44.2,glacier,GeoNames,2,
+Nioghalvfjerdsfjorden (79N),79.45,-23.0,glacier,GeoNames (adj. to grounding line),1,
+Zachariæ Isstrøm,78.85,-22.6,glacier,GeoNames (adj. to grounding line),1,
+Storstrømmen,77.1,-23.0,glacier,GeoNames (adj.),1,
+NEGIS,77.3,-30.0,glacier,unverified (mid-trunk from velocity maps),1,
+Helheim Gletscher,66.4,-38.4,glacier,GeoNames (adj. to trunk),1,
+Kangerlussuaq Gletscher,68.65,-33.2,glacier,GeoNames (adj. to trunk),1,
+Daugaard-Jensen Gletscher,71.85,-29.0,glacier,GeoNames (adj.),1,
+Upernavik Isstrøm,72.95,-54.2,glacier,GeoNames (adj. to trunk),1,
+Rink Isbræ,71.75,-51.0,glacier,GeoNames (adj. to trunk),2,
+Kong Oscar Gletscher,76.05,-59.5,glacier,GeoNames (adj. to trunk),2,
+Steenstrup Gletscher,75.3,-57.4,glacier,GeoNames (adj. to trunk),2,
+Tracy Gletscher,77.65,-65.7,glacier,GeoNames (adj. to trunk),2,
+Hayes Gletscher,74.95,-56.9,glacier,GeoNames,2,
+Køge Bugt Gletscher,65.15,-41.2,glacier,unverified (inland of GeoNames bay 64.99/-40.68),2,
+Ikertivaq Gletscher,65.6,-39.9,glacier,unverified (head of GeoNames fjord 65.48/-39.67),2,
+Midgård Gletscher,66.42,-37.0,glacier,GeoNames (adj.),2,
+Store Gletscher,70.4,-50.4,glacier,GeoNames (adj. to trunk),2,
+Kangiata Nunaata Sermia,64.3,-49.4,glacier,unverified,2,
+Sermeq Avannarleq,69.4,-50.25,glacier,GeoNames (Ilulissat area one),2,
+Camp Century,77.17,-61.13,icecore,NOAA/PANGAEA,1,
+NEEM,77.45,-51.06,icecore,NEEM project,1,
+NGRIP,75.1,-42.32,icecore,Copernicus CP table,1,
+GRIP,72.58,-37.64,icecore,Copernicus CP table,1,
+GISP2,72.6,-38.5,icecore,unverified (standard 72°36'N 38°30'W),1,
+EastGRIP,75.63,-35.99,icecore,DEIMS site record,1,
+Dye-3,65.18,-43.83,icecore,Copernicus CP table / Wikipedia,1,
+Renland,71.27,-26.73,icecore,Copernicus CP table,2,
+Summit Station,72.58,-38.46,station,GeoNames,2,
+Nuuk,64.18,-51.72,settlement,GeoNames,1,
+Ilulissat,69.22,-51.1,settlement,GeoNames,1,
+Kangerlussuaq,67.01,-50.69,settlement,GeoNames,1,
+Tasiilaq,65.62,-37.64,settlement,GeoNames,1,
+Qaanaaq,77.47,-69.23,settlement,GeoNames,1,
+Ittoqqortoormiit,70.49,-21.96,settlement,GeoNames,2,
+Upernavik,72.78,-56.15,settlement,GeoNames,2,
+Narsarsuaq,61.16,-45.43,settlement,GeoNames,2,
+Pituffik (Thule),76.53,-68.7,settlement,GeoNames,1,Pituffik
+Danmarkshavn,76.77,-18.67,station,GeoNames,2,
+Station Nord,81.6,-16.67,station,GeoNames,2,
+Baffin Bay,73.5,-64.0,sea,unverified (open water),1,
+Davis Strait,66.5,-57.5,sea,unverified (open water),1,
+Labrador Sea,59.5,-52.0,sea,unverified (open water),1,
+Irminger Sea,62.0,-36.0,sea,unverified (open water),1,
+Denmark Strait,66.5,-27.0,sea,unverified (open water),1,
+Greenland Sea,75.0,-10.0,sea,unverified (open water),1,
+Fram Strait,79.5,-5.0,sea,unverified (open water),1,
+Lincoln Sea,83.0,-58.0,sea,GeoNames,2,
+Nares Strait,80.3,-67.5,sea,unverified (Kennedy Channel),2,
+Arctic Ocean,85.0,-25.0,sea,unverified (open water),1,
+Disko Bay,69.15,-52.1,sea,GeoNames,2,Qeqertarsuup Tunua (Disko Bay)
+Melville Bay,75.78,-61.28,sea,GeoNames,2,
+Peary Land,82.63,-32.5,region,GeoNames,1,
+Kronprins Christian Land,80.5,-22.0,region,GeoNames,1,
+Germania Land,77.13,-20.04,region,GeoNames,2,
+Knud Rasmussen Land,80.0,-57.0,region,GeoNames,1,
+Inglefield Land,78.64,-69.99,region,GeoNames,2,
+Washington Land,80.25,-66.0,region,GeoNames,2,
+Jameson Land,71.17,-23.5,region,GeoNames,2,
+Disko Island (Qeqertarsuaq),69.75,-53.5,island,Wikipedia,1,Qeqertarsuaq (Disko)
+Milne Land,70.68,-26.75,island,GeoNames,1,
+Scoresby Sund (Kangertittivaq),70.3,-23.5,fjord,GeoNames (adj. to open water),1,Kangertittivaq (Scoresby Sund)
+Kangerlussuaq Fjord,68.38,-32.25,fjord,GeoNames (east coast fjord),2,
+Ilulissat Icefjord,69.17,-50.5,fjord,GeoNames,2,
+Nuup Kangerlua (Godthåbsfjord),64.5,-51.38,fjord,GeoNames,2,

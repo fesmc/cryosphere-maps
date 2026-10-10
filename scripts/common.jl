@@ -131,13 +131,14 @@ function graticule!(ax, proj, lats, lons; latrange, lonres=0.25, color=(:white, 
 end
 
 "Scale bar in km at lower-left corner position (x0,y0)."
-function scalebar!(ax, x0, y0, len; segs=4, h=len/40, fontsize=14, color=:black)
+function scalebar!(ax, x0, y0, len; segs=4, h=len/40, fontsize=14, color=:black, font=:regular, ink=:black,
+                   paper=:white)
     w = len/segs
     for k in 0:segs-1
-        poly!(ax, Rect(x0 + k*w, y0, w, h); color=(isodd(k) ? :white : :black), strokecolor=:black, strokewidth=0.8)
+        poly!(ax, Rect(x0 + k*w, y0, w, h); color=(isodd(k) ? paper : ink), strokecolor=ink, strokewidth=0.8)
     end
-    text!(ax, x0, y0 + 1.8h; text="0", fontsize, color, align=(:center, :bottom))
-    text!(ax, x0 + len, y0 + 1.8h; text="$(round(Int, len)) km", fontsize, color, align=(:center, :bottom))
+    text!(ax, x0, y0 + 1.8h; text="0", fontsize, font, color, align=(:center, :bottom))
+    text!(ax, x0 + len, y0 + 1.8h; text="$(round(Int, len)) km", fontsize, font, color, align=(:center, :bottom))
 end
 
 "Interfaces between integer basin ids over `icemask` (vertices, NaN-separated)."
@@ -409,28 +410,28 @@ Website URL in a corner (`corner` = :right or :left; `bottom` or top) inside
 the map with `limits` (xmin, xmax, ymin, ymax in km), next to the scale bar.
 Returns its box (km), for labels to keep clear of.
 """
-function site_url!(ax, limits, kmpp; corner=:right, bottom=true, ocean=:light, fontsize=28, margin=15)
+function site_url!(ax, limits, kmpp; corner=:right, bottom=true, ocean=:light, fontsize=28, margin=15,
+                   font=:regular, color=(ocean === :light ? :gray45 : (:white, 0.75)))
     txt = site_url()
     p = (corner === :right ? limits[2] - margin*kmpp : limits[1] + margin*kmpp,
          bottom ? limits[3] + margin*kmpp : limits[4] - margin*kmpp)
-    text!(ax, p...; text=txt, fontsize, color=(ocean === :light ? :gray45 : (:white, 0.75)),
-          align=(corner, bottom ? :bottom : :top))
-    w, h = textbox(txt, fontsize, kmpp)
+    text!(ax, p...; text=txt, fontsize, font, color, align=(corner, bottom ? :bottom : :top))
+    w, h = textbox(txt, fontsize, kmpp; font)
     x0 = corner === :right ? p[1] - w : p[1]
     y0 = bottom ? p[2] : p[2] - h
     return (x0, x0 + w, y0, y0 + h)
 end
 
 "QR code of the website (data/qr_site.txt, see scripts/make_qr.jl) with a caption."
-function qr_code!(pos; size=170, fontsize=24, kw...)
+function qr_code!(pos; size=170, fontsize=24, ink=:black, paper=:white, font=:regular, color=:gray25, kw...)
     ln = readlines(joinpath(ROOT, "data", "qr_site.txt"))
     m = permutedims(reduce(hcat, [[c == '1' for c in l] for l in ln[2:end]]))      # rows top to bottom
     n = Base.size(m, 1)
     g = GridLayout(pos; kw...)
-    ax = Axis(g[1, 1]; width=size, height=size, aspect=1, limits=(-2, n + 2, -2, n + 2))
+    ax = Axis(g[1, 1]; width=size, height=size, aspect=1, limits=(-2, n + 2, -2, n + 2), backgroundcolor=paper)
     hidedecorations!(ax); hidespines!(ax)
-    heatmap!(ax, 0.5:1:n, 0.5:1:n, reverse(permutedims(m), dims=2); colormap=[:white, :black], colorrange=(0, 1))
-    Label(g[2, 1], "Interactive map:\n" * site_url(); fontsize, color=:gray25)
+    heatmap!(ax, 0.5:1:n, 0.5:1:n, reverse(permutedims(m), dims=2); colormap=[paper, ink], colorrange=(0, 1))
+    Label(g[2, 1], "Interactive map:\n" * site_url(); fontsize, font, color)
     rowgap!(g, 6)
     return g
 end
