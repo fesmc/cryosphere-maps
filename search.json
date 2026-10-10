@@ -1,0 +1,156 @@
+[
+  {
+    "objectID": "paleo.html",
+    "href": "paleo.html",
+    "title": "Ice sheets at the Last Glacial Maximum",
+    "section": "",
+    "text": "Maps of the Northern Hemisphere ice sheets and of Antarctica 20 000 years ago, at the Last Glacial Maximum, in the styles of the present-day posters: the ice-surface elevation and the bed topography, with the present-day coastline and ice margin for comparison. The ice sheets come from the PaleoMIST 1.0 reconstruction (Gowan et al., 20211). Its changes since then in ice, surface and bed (including the lower sea level) are added to present-day topography (ETOPO 2022 and BedMachine Antarctica v4), see Data & methods."
+  },
+  {
+    "objectID": "paleo.html#maps",
+    "href": "paleo.html#maps",
+    "title": "Ice sheets at the Last Glacial Maximum",
+    "section": "Maps",
+    "text": "Maps\n\n\n\n\n\nNorthern Hemisphere, 20 ka: surface elevation\n\n\nNorthern Hemisphere, 20 ka: surface elevation · PNG, 1600 px, 3 MB\n\n\n\n\n\nNorthern Hemisphere, 20 ka: bed topography\n\n\nNorthern Hemisphere, 20 ka: bed topography · PNG, 1600 px, 2 MB\n\n\n\n\n\nAntarctica, 20 ka: surface elevation\n\n\nAntarctica, 20 ka: surface elevation · PNG, 1600 px, 2 MB\n\n\n\n\n\nAntarctica, 20 ka: bed topography\n\n\nAntarctica, 20 ka: bed topography · PNG, 1600 px, 3 MB"
+  },
+  {
+    "objectID": "paleo.html#key-numbers-compared-with-published-estimates",
+    "href": "paleo.html#key-numbers-compared-with-published-estimates",
+    "title": "Ice sheets at the Last Glacial Maximum",
+    "section": "Key numbers compared with published estimates",
+    "text": "Key numbers compared with published estimates\nIce volume and sea-level equivalent more than today, per ice sheet, computed on the map grids, compared with the values of PaleoMIST at 20 000 years ago (volume_sorted.txt of the data set).\n\n\n\n\n\n\n\n\n\n\n\nMap: volume (10⁶ km³)\nMap: sea-level equiv. (m)\nPaleoMIST: volume (10⁶ km³)\nPaleoMIST: sea-level equiv. (m)\n\n\n\n\nNorth America, Greenland, Iceland\n31.5\n75.0\n30.7\n77.3\n\n\nEurasia\n7.9\n17.8\n7.3\n18.5\n\n\nAntarctica\n5.9\n11.8\n3.9\n9.7\n\n\nPatagonia\n—\n—\n0.3\n0.7\n\n\nTotal\n45.4\n104.7\n42.2\n106.3\n\n\n\n\nThe sea-level equivalents of the maps count the ice above flotation, as on the present-day posters; those of PaleoMIST are its ice volume over an ocean of 3.61 × 10⁸ km² (ice density 910 kg m⁻³).\nThe Northern Hemisphere numbers agree with PaleoMIST within a few percent. For Antarctica, the PaleoMIST thickness grids themselves give 6.4 × 10⁶ km³ more ice than today on the map grid, close to the map; the smaller volume in volume_sorted.txt is not explained by the method of the maps.\nPaleoMIST has less ice than earlier reconstructions: 42.2 × 10⁶ km³ and a maximum sea-level fall of 116 m (Gowan et al., 2021), against 53 × 10⁶ km³ and 130–135 m from far-field sea-level data (Lambeck et al., 20142)."
+  },
+  {
+    "objectID": "paleo.html#footnotes",
+    "href": "paleo.html#footnotes",
+    "title": "Ice sheets at the Last Glacial Maximum",
+    "section": "Footnotes",
+    "text": "Footnotes\n\n\nGowan et al. (2021), A new global ice sheet reconstruction for the past 80 000 years, Nature Communications 12, 1199, doi:10.1038/s41467-021-21469-w; data: doi:10.1594/PANGAEA.905800.↩︎\nLambeck et al. (2014), Sea level and global ice volumes from the Last Glacial Maximum to the Holocene, PNAS 111, 15296–15303, doi:10.1073/pnas.1411762111.↩︎"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Greenland and Antarctic ice-sheet maps",
+    "section": "",
+    "text": "Interactive maps and A0 posters of the Greenland and Antarctic ice sheets: surface ice velocity over hillshaded topography, with drainage regions, surface contours, the median sea-ice edge, key numbers and place names. They are made with Julia and CairoMakie; the code is on GitHub, and Data & methods lists the sources and how the maps are made."
+  },
+  {
+    "objectID": "index.html#interactive-maps",
+    "href": "index.html#interactive-maps",
+    "title": "Greenland and Antarctic ice-sheet maps",
+    "section": "Interactive maps",
+    "text": "Interactive maps\n\n\nGreenland →\nIce velocity, surface and bed elevation at 500 m, with drainage regions, contours, sea-ice edges and all glacier names (GeoNames). Search for a name to find it.\n\n\nAntarctica →\nThe same at 1 km, with drainage basins, the grounding line and the glaciers, ice streams, ice shelves and domes of the SCAR Composite Gazetteer."
+  },
+  {
+    "objectID": "index.html#posters",
+    "href": "index.html#posters",
+    "title": "Greenland and Antarctic ice-sheet maps",
+    "section": "Posters",
+    "text": "Posters\n\n\n\n\n\nGreenland: ice velocity\n\n\nGreenland: ice velocity · PDF, A0, 41 MB · PNG, 100 dpi, 18 MB\n\n\n\n\n\nAntarctica: ice velocity\n\n\nAntarctica: ice velocity · PDF, A0, 44 MB · PNG, 100 dpi, 17 MB"
+  },
+  {
+    "objectID": "index.html#variants",
+    "href": "index.html#variants",
+    "title": "Greenland and Antarctic ice-sheet maps",
+    "section": "Variants",
+    "text": "Variants\n\n\n\n\n\nGreenland: ice velocity, more names\n\n\nGreenland: ice velocity, more names · PDF, A0, 41 MB · PNG, 100 dpi, 18 MB\n\n\n\n\n\nGreenland: ice velocity, ember colours\n\n\nGreenland: ice velocity, ember colours · PDF, A0, 40 MB · PNG, 100 dpi, 18 MB\n\n\n\n\n\nGreenland: ice velocity, dark ocean\n\n\nGreenland: ice velocity, dark ocean · PDF, A0, 41 MB · PNG, 100 dpi, 17 MB\n\n\n\n\n\nGreenland: surface elevation\n\n\nGreenland: surface elevation · PDF, A0, 41 MB · PNG, 100 dpi, 19 MB\n\n\n\n\n\nGreenland: bed topography\n\n\nGreenland: bed topography · PDF, A0, 43 MB · PNG, 100 dpi, 17 MB\n\n\n\n\n\nAntarctica: ice velocity, more names\n\n\nAntarctica: ice velocity, more names · PDF, A0, 44 MB · PNG, 100 dpi, 17 MB\n\n\n\n\n\nAntarctica: ice velocity, ember colours\n\n\nAntarctica: ice velocity, ember colours · PDF, A0, 44 MB · PNG, 100 dpi, 17 MB\n\n\n\n\n\nAntarctica: ice velocity, dark ocean\n\n\nAntarctica: ice velocity, dark ocean · PDF, A0, 43 MB · PNG, 100 dpi, 16 MB\n\n\n\n\n\nAntarctica: surface elevation\n\n\nAntarctica: surface elevation · PDF, A0, 42 MB · PNG, 100 dpi, 18 MB\n\n\n\n\n\nAntarctica: bed topography\n\n\nAntarctica: bed topography · PDF, A0, 47 MB · PNG, 100 dpi, 18 MB"
+  },
+  {
+    "objectID": "index.html#key-numbers-compared-with-published-estimates",
+    "href": "index.html#key-numbers-compared-with-published-estimates",
+    "title": "Greenland and Antarctic ice-sheet maps",
+    "section": "Key numbers compared with published estimates",
+    "text": "Key numbers compared with published estimates\nThe key numbers on the posters are computed from BedMachine on the poster grids (see Data & methods). They agree with published estimates within the spread between datasets.\nGreenland (BedMachine v6, 500 m grid)\n\n\n\n\nPoster\nPublished\n\n\n\n\nIce volume\n2.98 × 10⁶ km³\n2.99 ± 0.02 × 10⁶ km³ (BedMachine v31)\n\n\nSea-level equivalent\n7.4 m\n7.42 ± 0.05 m (BedMachine v32)\n\n\nIce area\n1.73 × 10⁶ km²\n~1.7 × 10⁶ km² (depends on what counts as peripheral ice)\n\n\nMaximum thickness\n3411 m\n~3.4 km\n\n\n\nAntarctica (BedMachine v4, 1 km grid), compared with Table 5 of Bedmap33\n\n\n\n\nPoster\nBedmap2\nBedMachine v3\nBedmap3\n\n\n\n\nArea incl. ice shelves (10⁶ km²)\n13.85\n13.92\n13.59\n13.63\n\n\nGrounded area (10⁶ km²)\n12.30\n12.30\n12.35\n12.10\n\n\nVolume incl. ice shelves (10⁶ km³)\n26.92\n26.92\n26.77\n27.17\n\n\nSea-level equivalent (m)\n58.1\n58\n58\n58\n\n\nMaximum thickness (m)\n5015\n4897\n4822\n4757\n\n\n\n\nThe regional sea-level equivalents (East 52.4 m, West 5.4 m, Peninsula 0.35 m) add up to the total and agree with the 52 m (East) and 5 m (West) of Bedmap14.\nThe ice-shelf area (1.55 × 10⁶ km²) is close to Bedmap2 (1.62) and Bedmap3 (1.53).\nThe maximum thickness is the least robust number: it depends on the bed product. On the poster it lies in the Denman Glacier trough (67.5°S, 99.3°E), the deepest bed in BedMachine; Bedmap3 puts its thickest ice at 76°S, 118°E.\nBedMachine thicknesses are ice-equivalent (firn air removed), so volume and sea-level equivalent need no firn correction."
+  },
+  {
+    "objectID": "index.html#about",
+    "href": "index.html#about",
+    "title": "Greenland and Antarctic ice-sheet maps",
+    "section": "About",
+    "text": "About\nThe maps and website were designed by Alexander Robinson (alexander.robinson@awi.de) with help from Anthropic Claude Code."
+  },
+  {
+    "objectID": "index.html#footnotes",
+    "href": "index.html#footnotes",
+    "title": "Greenland and Antarctic ice-sheet maps",
+    "section": "Footnotes",
+    "text": "Footnotes\n\n\nMorlighem et al. (2017), BedMachine v3, Geophys. Res. Lett. 44, doi:10.1002/2017GL074954.↩︎\nMorlighem et al. (2017), BedMachine v3, Geophys. Res. Lett. 44, doi:10.1002/2017GL074954.↩︎\nPritchard et al. (2025), Bedmap3, Scientific Data 12, 414, doi:10.1038/s41597-025-04672-y.↩︎\nLythe et al. (2001), BEDMAP, J. Geophys. Res. 106, 11335–11351, doi:10.1029/2000JB900449.↩︎"
+  },
+  {
+    "objectID": "historical.html",
+    "href": "historical.html",
+    "title": "Historical maps",
+    "section": "",
+    "text": "The ice sheets drawn as old charts, from the same data as the posters: ice flow in rust to oxblood over the hillshaded surface, water lining along the coasts, waves on the sea beyond the median winter sea-ice edge and floes inside it. On them are the routes of historical expeditions and where penguins breed and Arctic animals gather. The Greenland map uses Greenlandic (kalaallisut) names and terms: Kalaallit Nunaat is Greenland, “the land of the Greenlanders”, and Sermersuaq the ice sheet."
+  },
+  {
+    "objectID": "historical.html#maps",
+    "href": "historical.html#maps",
+    "title": "Historical maps",
+    "section": "Maps",
+    "text": "Maps\n\n\n\n\n\nGreenland: old-world style\n\n\nGreenland: old-world style · PDF, A0, 39 MB · PNG, 100 dpi, 17 MB\n\n\n\n\n\nAntarctica: old-world style\n\n\nAntarctica: old-world style · PDF, A0, 41 MB · PNG, 100 dpi, 17 MB"
+  },
+  {
+    "objectID": "historical.html#routes",
+    "href": "historical.html#routes",
+    "title": "Historical maps",
+    "section": "Routes",
+    "text": "Routes\nThe routes are transcribed from the expedition accounts and published positions; every point and its source are listed in data/routes_antarctica.csv and data/routes_greenland.csv.\n\nAlong the route (camp and noon positions): Amundsen 1911–12 (The South Pole; Lantz, 2022, for the plateau), Scott 1911–12 (Scott’s Last Expedition; Debenham, 1923), Shackleton 1908–09 (The Heart of the Antarctic) and the drift of the Endurance and the boat journey to Elephant Island 1915–16 (South; Worsley’s log). Some longitudes are inferred from the stated course, as noted in the files.\nDocumented places only, joined by arcs to show that the route between them is simplified: Mawson 1912–13, Fuchs–Hillary 1957–58, and in Greenland Nansen 1888, Peary 1892, the Danmark Expedition 1906–08, Koch–Wegener 1912–13, Wegener 1930–31, the British Arctic Air Route Expedition 1930–31 and the Expéditions Polaires Françaises 1949–51."
+  },
+  {
+    "objectID": "historical.html#wildlife",
+    "href": "historical.html#wildlife",
+    "title": "Historical maps",
+    "section": "Wildlife",
+    "text": "Wildlife\n\nEmperor penguin colonies in 2023 (Fretwell, 2024, UK Polar Data Centre, doi:10.5285/fb0547e4-d2c1-4580-8c98-182f1da7d9ae).\nAdélie penguin colonies from MAPPPD (Humphries et al., 2017, penguinmap.com), grouped within 100 km.\nGreenland: polar bear denning, musk-ox calving, walrus haul-out and narwhal summer areas from the Areas Important to Wildlife (Greenland Institute of Natural Resources and DCE, Aarhus University), one sign per area, grouped within 100 km."
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "Data & methods",
+    "section": "",
+    "text": "Field\nGreenland\nAntarctica\n\n\n\n\nBed and surface topography, ice mask, thickness\nBedMachine Greenland v6, 150 m (Morlighem et al., 2017)\nBedMachine Antarctica v4, 500 m (Morlighem et al., 2020)\n\n\nSurface ice velocity\nMEaSUREs multi-year mosaic, 250 m (Joughin et al., 2018)\nMEaSUREs InSAR-based velocity v2, 450 m (Rignot et al., 2011)\n\n\nDrainage regions\nIMBIE 2 (Rignot & Mouginot)\nIMBIE 2 (Rignot & Mouginot)\n\n\nBeyond the BedMachine domain\nETOPO 2022 (NOAA NCEI) and RGI 6.0 glacier outlines\n—\n\n\nSea-ice edge\nSea Ice Index v4, median 1981–2010 (Fetterer et al., 2017)\nSea Ice Index v4, median 1981–2010\n\n\nPlace names\nGeoNames and a curated list\nSCAR Composite Gazetteer of Antarctica and a curated list"
+  },
+  {
+    "objectID": "about.html#data-sources",
+    "href": "about.html#data-sources",
+    "title": "Data & methods",
+    "section": "",
+    "text": "Field\nGreenland\nAntarctica\n\n\n\n\nBed and surface topography, ice mask, thickness\nBedMachine Greenland v6, 150 m (Morlighem et al., 2017)\nBedMachine Antarctica v4, 500 m (Morlighem et al., 2020)\n\n\nSurface ice velocity\nMEaSUREs multi-year mosaic, 250 m (Joughin et al., 2018)\nMEaSUREs InSAR-based velocity v2, 450 m (Rignot et al., 2011)\n\n\nDrainage regions\nIMBIE 2 (Rignot & Mouginot)\nIMBIE 2 (Rignot & Mouginot)\n\n\nBeyond the BedMachine domain\nETOPO 2022 (NOAA NCEI) and RGI 6.0 glacier outlines\n—\n\n\nSea-ice edge\nSea Ice Index v4, median 1981–2010 (Fetterer et al., 2017)\nSea Ice Index v4, median 1981–2010\n\n\nPlace names\nGeoNames and a curated list\nSCAR Composite Gazetteer of Antarctica and a curated list"
+  },
+  {
+    "objectID": "about.html#methods",
+    "href": "about.html#methods",
+    "title": "Data & methods",
+    "section": "Methods",
+    "text": "Methods\nAll fields are averaged onto the polar stereographic grids of the posters (EPSG:3413 at 500 m for Greenland, EPSG:3031 at 1 km for Antarctica) with GDAL. The maps combine a hillshade of the ice surface (or the bed) with surface ice velocity on a logarithmic colour scale; slow ice fades into the hillshade.\nThe key numbers are computed on the same grids, with cell areas corrected for the distortion of the projection. The sea-level equivalent counts the grounded ice above flotation (ice density 917 kg m⁻³, sea water 1027 kg m⁻³ for flotation, melt water 1000 kg m⁻³, ocean area 3.625 × 10⁸ km²). The regions come from the IMBIE 2 drainage basins (East and West Antarctica, the Antarctic Peninsula; for Greenland the ice sheet without the peripheral ice caps). These polygons cover the grounded ice, so ice outside them (ice shelves, islands, the ice margin) is given to the nearest region."
+  },
+  {
+    "objectID": "about.html#place-names-in-greenland",
+    "href": "about.html#place-names-in-greenland",
+    "title": "Data & methods",
+    "section": "Place names in Greenland",
+    "text": "Place names in Greenland\nThe maps give the Greenlandic name of a place first, with its historical name in parentheses (e.g., “Nuuk (Godthåb)”, “Sermeq Kujalleq (Jakobshavn Isbræ)”). Since 1996, only Greenlandic names are standardised in Greenland, by the Greenland Place Name Committee at the Language Secretariat, Oqaasileriffik. Many glaciers, however, are still known by the Danish names of the colonial period and the early expeditions, which are used throughout the scientific literature. Showing both names puts the official name first, while the historical name links the map to the literature.\nMost names come from GeoNames, which usually lists the Danish name first and the Greenlandic name, where known, among the alternate names. We chose the Greenlandic names by hand, since an automatic choice was not reliable: GeoNames marks few names by language, and many of its Greenlandic names are in the orthography used before 1973. A Greenlandic name was added only where GeoNames or Wikipedia gives it in the modern orthography. Where GeoNames itself lists a Greenlandic name first, it is kept as given. Features without a known Greenlandic name keep their Danish or English name. This is the case for most of northern and northeastern Greenland, where nearly all names were given by expeditions (e.g., “Petermann Gletscher”, “Zachariæ Isstrøm”). Note that “Gletscher” is the older Danish spelling of “glacier” (modern Danish “gletsjer”), not German. The open seas keep their English names, while bays along the coast take their Greenlandic names (e.g., “Qimusseriarsuaq (Melville Bay)”).\nThe official register of the Place Name Committee holds about 33,000 names, but it is not available for download. We will use it once it is (issue #2). The names chosen here are listed in data/labels_greenland.csv (poster labels) and data/greenlandic_names.csv (glaciers of the gazetteer) in the repository."
+  },
+  {
+    "objectID": "about.html#paleo-maps",
+    "href": "about.html#paleo-maps",
+    "title": "Data & methods",
+    "section": "Paleo maps",
+    "text": "Paleo maps\nThe paleo maps show the ice sheets at the Last Glacial Maximum (20 000 years ago) from the PaleoMIST 1.0 reconstruction (Gowan et al., 2021; doi:10.1594/PANGAEA.905800). The changes since then in PaleoMIST are added to present-day topography: ETOPO 2022 (NOAA NCEI) north of 24°N, on a 5 km grid (EPSG:3413), and BedMachine Antarctica v4 on a 4 km grid (EPSG:3031).\n\nBed: the present-day bed minus the relative sea-level change of PaleoMIST (Earth deformation and the lower sea level), so the bed is given relative to the sea level of the time.\nIce surface: the present-day surface plus the change of the PaleoMIST surface (taken as sea level over the ocean), smoothed over 15 km to remove the noise of the 5 km PaleoMIST grids. Present-day ice keeps the detail of the present-day data, and ice beyond it follows the PaleoMIST surface.\nIce: where PaleoMIST has ice at the time; its thickness is the surface minus the bed, and ice thinner than flotation floats. PaleoMIST reconstructs grounded ice only, so present-day ice shelves beyond it are left out.\n\nThe key numbers are computed as for the present-day posters. The regions of the Northern Hemisphere numbers (North America, Greenland, Iceland, Eurasia) are approximate."
+  },
+  {
+    "objectID": "about.html#the-website",
+    "href": "about.html#the-website",
+    "title": "Data & methods",
+    "section": "The website",
+    "text": "The website\nThe site is built with Quarto and hosted on GitHub Pages. The poster gallery shows the sharing versions of the posters with links to the A0 PDFs.\nThe interactive maps use OpenLayers with proj4js, in the same polar stereographic projections as the posters (EPSG:3413 and EPSG:3031), so nothing is reprojected in the browser.\n\nRaster layers. Each map style (ice velocity in two colour maps, surface elevation, bed elevation) is rendered by the same Julia code as the posters, at the full grid resolution (500 m for Greenland, 1 km for Antarctica). The image is cut into a pyramid of 256 × 256 pixel JPEG tiles (JpegTurbo.jl), halving the resolution by 2 × 2 averaging from one zoom level to the next. OpenLayers loads them through a custom tile grid with the extent and resolutions of the poster grid.\nVector layers. The surface contours, ice margin, grounding line and drainage divides are traced from the grids with Contour.jl, as on the posters. The sea-ice edges are reprojected and clipped with GDAL (ogr2ogr). All are stored as GeoJSON in projected coordinates.\nNames. The place names of the posters and the full gazetteers (GeoNames for Greenland, the SCAR Composite Gazetteer for Antarctica) are GeoJSON points. Names of tier 1 show at all zoom levels, tier 2 and the gazetteer as you zoom in; OpenLayers leaves out labels that would overlap. Clicking a name shows its other names, position and source.\nSearch. The search box suggests all names. A name is matched on any of its names (ignoring case), and the map zooms to it. The drainage regions can be found by their label (e.g., “NW”) or, for Greenland, by their full name (“Northwest”), and the map zooms to the whole region.\n\nThe site is published as a single commit of the gh-pages branch, replaced at each update, so the tiles and PDFs do not build up a history in the repository."
+  },
+  {
+    "objectID": "about.html#reproducing-the-maps",
+    "href": "about.html#reproducing-the-maps",
+    "title": "Data & methods",
+    "section": "Reproducing the maps",
+    "text": "Reproducing the maps\nThe repository contains all scripts, with the steps to download and prepare the data, plot the posters and build this site in its README."
+  }
+]
