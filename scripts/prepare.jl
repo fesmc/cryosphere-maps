@@ -323,7 +323,7 @@ inside(g, proj, lon, lat) = ((x, y) = project(proj, lon, lat); g.x[1] <= x <= g.
 
 """
 Write a gazetteer CSV with columns name, lat, lon, type, source, tier (3 =
-gazetteer), alt (other names, separated by |).
+gazetteer), alt (other names, separated by |), historical (see read_labels).
 """
 function write_gazetteer(region, rows)
     out = joinpath(REPO_PREP_DIR, "gazetteer_$(region).csv")
@@ -331,24 +331,30 @@ function write_gazetteer(region, rows)
     sort!(rows; by=r -> r[1])
     q(s) = occursin(r"[,\"]", s) ? "\"" * replace(s, "\"" => "\"\"") * "\"" : s
     open(out, "w") do io
-        println(io, "name,lat,lon,type,source,tier,alt")
-        for (name, lat, lon, type, src, alt) in rows
-            println(io, join([q(name), round(lat, digits=4), round(lon, digits=4), type, q(src), 3, q(alt)], ","))
+        println(io, "name,lat,lon,type,source,tier,alt,historical")
+        for (name, lat, lon, type, src, alt, hist) in rows
+            println(io, join([q(name), round(lat, digits=4), round(lon, digits=4), type, q(src), 3, q(alt), q(hist)], ","))
         end
     end
     println("wrote ", out, " (", length(rows), " names)")
 end
 
-"Greenland glaciers from GeoNames (feature code GLCR)."
+"""
+Greenland glaciers from GeoNames (feature code GLCR), with the Greenlandic and
+historical names of data/greenlandic_names.csv (by GeoNames id) where given.
+"""
 function gazetteer_greenland(g)
     d = readdlm(raw("geonames", "GL", "GL.txt"), '\t', Any; quotes=false)
+    kl, _ = readdlm(joinpath(ROOT, "data", "greenlandic_names.csv"), ',', Any; header=true, quotes=true)
+    klnames = Dict(Int(r[1]) => (string(r[2]), string(r[3])) for r in eachrow(kl))
     rows = []
     for r in eachrow(d)
         r[8] == "GLCR" || continue
         lat, lon = Float64(r[5]), Float64(r[6])
         inside(g, PROJ_GRL, lon, lat) || continue
-        alt = filter(a -> a != r[2], unique(split(string(r[4]), ",")))
-        push!(rows, (string(r[2]), lat, lon, "glacier", "GeoNames $(r[1])", join(filter(!isempty, alt), "|")))
+        name, hist = get(klnames, Int(r[1]), (string(r[2]), ""))
+        alt = filter(a -> !isempty(a) && a ∉ (name, hist), unique([string(r[2]); split(string(r[4]), ",")]))
+        push!(rows, (name, lat, lon, "glacier", "GeoNames $(r[1])", join(alt, "|"), hist))
     end
     write_gazetteer("greenland", rows)
 end
@@ -376,7 +382,7 @@ function gazetteer_antarctica(g)
         inside(g, PROJ_ANT, lon[k], lat[k]) || continue
         alt = filter(!=(name[k]), unique(name[ks]))
         push!(rows, (name[k], Float64(lat[k]), Float64(lon[k]), CGA_TYPES[ftype[k]], "SCAR CGA $(id[k]) ($(country[k]))",
-                     join(alt, "|")))
+                     join(alt, "|"), ""))
     end
     write_gazetteer("antarctica", rows)
 end

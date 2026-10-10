@@ -8,7 +8,7 @@
 # All other label types are drawn at their anchor.
 
 struct PlaceLabel
-    name::String
+    name::String           # as shown: "name (historical)" where a historical name is given
     lon::Float64
     lat::Float64
     type::String
@@ -19,17 +19,22 @@ end
 
 """
 Read a label CSV (columns name, lat, lon, type, source, tier and optionally alt,
-|-separated). `namecol` names a column of names to use instead of `name` where
-it is not empty (e.g. "kl", the Greenlandic names).
+|-separated, and historical). A label with a historical name (Greenland: the
+Danish or English name) is shown as "name (historical)"; both names are also
+searchable on their own.
 """
-function read_labels(path; namecol="name")
+function read_labels(path)
     d, h = readdlm(path, ',', Any; header=true, quotes=true)
     col(n, default) = (i = findfirst(==(n), vec(h)); i === nothing ? fill(default, size(d, 1)) : d[:, i])
     str(v) = strip(string(v))
-    names = [isempty(str(o)) ? str(n) : str(o) for (n, o) in zip(col("name", ""), col(namecol, ""))]
-    return [PlaceLabel(n, Float64(lon), Float64(lat), str(t), Int(tier), str(src), filter(!isempty, split(str(alt), "|")))
-            for (n, lat, lon, t, src, tier, alt) in zip(names, col("lat", 0), col("lon", 0), col("type", ""),
-                                                        col("source", ""), col("tier", 1), col("alt", ""))]
+    function label(n, lat, lon, t, src, tier, alt, hist)
+        n, hist = str(n), str(hist)
+        alt = filter(!isempty, split(str(alt), "|"))
+        isempty(hist) && return PlaceLabel(n, Float64(lon), Float64(lat), str(t), Int(tier), str(src), alt)
+        return PlaceLabel("$n ($hist)", Float64(lon), Float64(lat), str(t), Int(tier), str(src), unique([n; hist; alt]))
+    end
+    return [label(r...) for r in zip(col("name", ""), col("lat", 0), col("lon", 0), col("type", ""), col("source", ""),
+                                     col("tier", 1), col("alt", ""), col("historical", ""))]
 end
 
 "Name normalised for matching: case-folded, accents removed."

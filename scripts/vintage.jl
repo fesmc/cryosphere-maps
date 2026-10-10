@@ -445,8 +445,7 @@ function main(args=ARGS)
         a in ("noroutes", "nofauna", "full", "pdf") || error("unknown option $a")
     end
     full = "full" in flags
-    labels = filter(l -> l.tier <= 1, read_labels(joinpath(ROOT, "data", "labels_$(region).csv");
-                                                  namecol=region == "greenland" ? "kl" : "name"))
+    labels = filter(l -> l.tier <= 1, read_labels(joinpath(ROOT, "data", "labels_$(region).csv")))
     routes = "noroutes" in flags ? nothing : read_routes(region)
     fauna  = "nofauna" in flags ? nothing : read_fauna(region)
     d = load_prepared(region; full)

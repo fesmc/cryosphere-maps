@@ -82,8 +82,10 @@ north of 24°N (OPeNDAP subsets).
 The label CSVs have columns `name, lat, lon, type, source, tier`. Entries
 marked `unverified` in `source` are approximate. `tier` 1 = shown on the
 posters, 2 = extra detail. The gazetteers (`data/prepared/gazetteer_*.csv`,
-tier 3) also list other names of each feature (`alt`). `labels_greenland.csv`
-also has Greenlandic names (`kl`, from GeoNames), used by the vintage map.
+tier 3) also list other names of each feature (`alt`). In Greenland the
+Greenlandic name comes first, with the historical (Danish or English) name in
+parentheses: column `historical` of `labels_greenland.csv` and the gazetteer,
+the latter from `data/greenlandic_names.csv` (by GeoNames id, checked by hand).
 
 Overlays (options `routes` and `fauna`, and the vintage maps):
 
@@ -259,8 +261,7 @@ for Antarctica, the regions and seas of `data/labels_antarctica.csv`.
 The same data as the posters, drawn as an old chart: inks on paper, ice flow in
 rust to oxblood, water lining along the coasts, waves on the sea beyond the
 median winter sea-ice edge and floes inside it, expedition routes, wildlife,
-a compass rose and a neatline. The Greenland map uses Greenlandic names where
-the label CSV has them (`kl`). Fonts: IM Fell English (SIL Open Font License,
+a compass rose and a neatline. Fonts: IM Fell English (SIL Open Font License,
 `data/fonts/`).
 ```bash
 julia --project=. scripts/vintage.jl antarctica
