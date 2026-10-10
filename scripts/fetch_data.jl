@@ -4,7 +4,8 @@
 #   machine urs.earthdata.nasa.gov login <user> password <password>
 # Everything else is public. Existing files are skipped; partial downloads resume.
 #
-# Usage: julia --project=. scripts/fetch_data.jl
+# Usage: julia --project=. scripts/fetch_data.jl [fauna]
+# `fauna`: only the small wildlife files for the map overlays (scripts/prepare_overlays.jl).
 # Run on a node with internet access (albedo login node).
 
 using NCDatasets, Dates
@@ -64,6 +65,22 @@ const ETOPO_SUBSETS = [
      (24.0, 90.0), (-180.0, 180.0)),
 ]
 
+# Wildlife for the map overlays (scripts/prepare_overlays.jl), as (url, file name in raw/fauna):
+# emperor penguin colonies 2023 (Fretwell, 2024, UK PDC, doi:10.5285/fb0547e4-d2c1-4580-8c98-182f1da7d9ae),
+# MAPPPD penguin counts (Humphries et al., 2017, www.penguinmap.com) and the Greenland Areas
+# Important to Wildlife (GINR/DCE): musk-ox calving, walrus haul-outs, polar bear denning and
+# narwhal summer areas.
+const AIW = "https://services-eu1.arcgis.com/0uK40YtWoUkQMlYW/arcgis/rest/services/Areas_Important_to_Wildlife_data/FeatureServer"
+const FAUNA_FILES = [
+    ("https://ramadda.data.bas.ac.uk/repository/entry/get/emperor_colony_locations2023.kmz?entryid=" *
+     "synth%3Afb0547e4-d2c1-4580-8c98-182f1da7d9ae%3AL2VtcGVyb3JfY29sb255X2xvY2F0aW9uczIwMjMua216",
+     "emperor_colony_locations2023.kmz"),
+    ("https://www.penguinmap.com/mapppd/DownloadAll/", "mapppd_AllCounts.csv"),
+    [("$AIW/$id/query?where=1%3D1&outFields=*&outSR=4326&f=geojson", "aiw_$(name).geojson")
+     for (id, name) in ((14, "muskox_calving"), (17, "walrus_haulout"), (21, "polarbear_denning"),
+                        (22, "narwhal_summer"))]...,
+]
+
 function download(url, dest; earthdata=false)
     if isfile(dest)
         println("have ", basename(dest)); return
@@ -110,7 +127,11 @@ function fetch_etopo(url, name, lats, lons)
     mv(out*".part", out)
 end
 
-function main()
+function main(args=ARGS)
+    for (url, name) in FAUNA_FILES
+        download(url, joinpath(RAW_DIR, "fauna", name))
+    end
+    "fauna" in args && return
     for (sub, url, edl) in FILES
         dest = joinpath(RAW_DIR, sub, basename(url))
         download(url, dest; earthdata=edl)

@@ -1,0 +1,114 @@
+species,name,lat,lon,weight,source
+adelie,"Heroina Island",-63.4077,-54.9958,1039277,MAPPPD
+adelie,"Cape Adare",-71.5469,170.5614,597071,MAPPPD
+adelie,"Cape Crozier (west)",-77.3288,168.2863,381880,MAPPPD
+adelie,"MacKellar Islands",-66.8703,142.1829,319857,MAPPPD
+adelie,"Rauer Islands",-68.6955,77.8069,310712,MAPPPD
+adelie,"Hope Bay",-63.5014,-57.0714,196590,MAPPPD
+adelie,"Ferrier Peninsula",-60.7027,-44.8977,180318,MAPPPD
+adelie,"Lindsay Islands",-73.7606,-103.1505,156057,MAPPPD
+adelie,"Rookery Islands",-67.5414,62.7443,150141,MAPPPD
+adelie,"Holl/O'Connor",-66.4091,110.2631,143843,MAPPPD
+adelie,"Cape Cotter",-72.5863,170.0419,96109,MAPPPD
+adelie,"Lovill Bluff",-73.4900,-127.3805,71644,MAPPPD
+adelie,"Scullin/Murray",-67.7830,66.6970,54499,MAPPPD
+adelie,"Avian Island",-67.8399,-68.4562,52081,MAPPPD
+adelie,"Point Geologie",-66.6688,139.9657,50669,MAPPPD
+adelie,"Franklin Island West",-76.1620,168.3384,41594,MAPPPD
+adelie,"Inexpressible Island",-74.8316,163.8964,41262,MAPPPD
+adelie,"Cape Batterbee",-65.8420,53.7840,40023,MAPPPD
+adelie,"Shepard Island",-74.3847,-132.6117,39415,MAPPPD
+adelie,"Mount Biscoe",-66.3361,51.0432,39261,MAPPPD
+adelie,"Harald Bay",-69.2660,158.0449,36587,MAPPPD
+adelie,"Coulman South",-73.4826,169.8785,33821,MAPPPD
+adelie,"Penguin Point (Seymour Island)",-64.2950,-56.6910,21561,MAPPPD
+adelie,"Torgersen Island",-64.8924,-64.1984,19114,MAPPPD
+adelie,"Sims Island",-73.2720,-78.5410,14784,MAPPPD
+adelie,"Point Thomas (Rakusa Point)",-62.1611,-58.3453,9403,MAPPPD
+adelie,"Sabrina Island",-66.8928,163.2982,9184,MAPPPD
+adelie,"Rumpa Island",-69.1351,39.4509,6314,MAPPPD
+adelie,"Kirby Head",-67.3858,46.4081,6186,MAPPPD
+adelie,"Armstrong Reef",-65.9556,-65.9361,5982,MAPPPD
+adelie,"Haswell Island",-66.5325,92.9641,4436,MAPPPD
+adelie,"Andresen Island Site 1",-66.8632,-66.6659,2664,MAPPPD
+adelie,"Pink Pool Point",-61.3110,-54.0822,2210,MAPPPD
+adelie,"Cape Nutt",-66.5876,107.9221,1944,MAPPPD
+adelie,"Lewis Island",-66.1050,134.3850,1719,MAPPPD
+adelie,"Nella/Thalla Islands",-70.6969,166.7982,1468,MAPPPD
+adelie,"Cape Burks",-74.7500,-136.8300,1209,MAPPPD
+adelie,"Cape Hinode",-68.2608,42.2714,552,MAPPPD
+adelie,"Chick Islands",-66.8014,120.9527,533,MAPPPD
+adelie,"Bolingen/Lichen Island",-69.4560,75.7470,465,MAPPPD
+adelie,"Cruzen Island",-74.7340,-140.3270,226,MAPPPD
+adelie,"Charcot Island",-69.7620,-75.4070,37,MAPPPD
+adelie,"Rhyolite Island",-69.6490,-68.5710,36,MAPPPD
+adelie,"McDonald Point",-67.3430,59.6650,20,MAPPPD
+adelie,"SE Fisher Bay",-67.5950,146.0810,9,MAPPPD
+adelie,"Peter I Island",-68.8350,-90.4920,2,MAPPPD
+adelie,"Hannah Point",NaN,NaN,0,MAPPPD
+emperor,"Cape Colbeck",-77.1353,-157.7298,1,Fretwell (2024), BAS
+emperor,"Rupert Coast",-75.3868,-142.7050,1,Fretwell (2024), BAS
+emperor,"Curzon Island",-74.7235,-140.3567,1,Fretwell (2024), BAS
+emperor,"Verleger Point",-74.7050,-136.0660,1,Fretwell (2024), BAS
+emperor,"Ledda Bay",-74.4345,-130.9384,1,Fretwell (2024), BAS
+emperor,"Thurston Glacier",-73.4977,-125.6204,1,Fretwell (2024), BAS
+emperor,"Cape Gates",-73.6609,-122.6974,1,Fretwell (2024), BAS
+emperor,"Bear Peninsula",-74.3495,-110.2395,1,Fretwell (2024), BAS
+emperor,"Brownson Islands",-74.1420,-103.6302,1,Fretwell (2024), BAS
+emperor,"Noville Peninsula",-71.7842,-98.4054,1,Fretwell (2024), BAS
+emperor,"Pfrogner Point",-72.5720,-90.8046,1,Fretwell (2024), BAS
+emperor,"Bryan Coast",-73.3503,-85.4994,1,Fretwell (2024), BAS
+emperor,"Smyley Island",-72.3017,-78.8195,1,Fretwell (2024), BAS
+emperor,"Verdi Inlet",-71.5559,-74.7603,1,Fretwell (2024), BAS
+emperor,"Rothschild Island",-69.5209,-72.2293,1,Fretwell (2024), BAS
+emperor,"Smith Peninsula",-74.3884,-60.8996,1,Fretwell (2024), BAS
+emperor,"Jason Peninsula",-66.0872,-60.6726,1,Fretwell (2024), BAS
+emperor,"Dolleman Island",-70.6827,-60.5438,1,Fretwell (2024), BAS
+emperor,"Cape Darlington",-72.2610,-60.1854,1,Fretwell (2024), BAS
+emperor,"Snow Hill",-64.4888,-57.4167,1,Fretwell (2024), BAS
+emperor,"Gould Bay",-77.7499,-47.4499,1,Fretwell (2024), BAS
+emperor,"Luitpold Coast",-77.2710,-33.5520,1,Fretwell (2024), BAS
+emperor,"Halley Bay",-75.4495,-26.2415,1,Fretwell (2024), BAS
+emperor,"Dawson lambton Ice Tongue",-76.0703,-26.7580,1,Fretwell (2024), BAS
+emperor,"Stancomb Wills Glacier",-74.0294,-23.3331,1,Fretwell (2024), BAS
+emperor,"Drescher Inlet",-72.8296,-19.2799,1,Fretwell (2024), BAS
+emperor,"Riiser Larsen Ice Shelf",-72.1137,-15.3091,1,Fretwell (2024), BAS
+emperor,"Atka Bay",-70.6142,-8.1317,1,Fretwell (2024), BAS
+emperor,"Sanae",-69.9303,-1.3407,1,Fretwell (2024), BAS
+emperor,"Astrid Ice Tongue",-69.9481,8.3176,1,Fretwell (2024), BAS
+emperor,"Lazarev North",-69.3796,14.7163,1,Fretwell (2024), BAS
+emperor,"Ragnhild Coast",-69.9827,27.0743,1,Fretwell (2024), BAS
+emperor,"Gunnerus Peninsula",-68.7625,34.3819,1,Fretwell (2024), BAS
+emperor,"Umbeashi",-68.0434,43.0797,1,Fretwell (2024), BAS
+emperor,"Casey Bay",-67.3104,46.9622,1,Fretwell (2024), BAS
+emperor,"Amundsen Bay",-66.7826,50.5437,1,Fretwell (2024), BAS
+emperor,"Kloa Point",-66.6407,57.2779,1,Fretwell (2024), BAS
+emperor,"Fold Island",-67.3239,59.3159,1,Fretwell (2024), BAS
+emperor,"Taylor Glacier",-67.4543,60.8778,1,Fretwell (2024), BAS
+emperor,"Auster",-67.3966,63.9742,1,Fretwell (2024), BAS
+emperor,"Cape Darnley",-67.8870,69.6960,1,Fretwell (2024), BAS
+emperor,"Amanda Bay",-69.2711,76.8348,1,Fretwell (2024), BAS
+emperor,"West Ice Shelf",-66.2706,81.9822,1,Fretwell (2024), BAS
+emperor,"Karelin Bay",-66.4118,85.3836,1,Fretwell (2024), BAS
+emperor,"Burton Ice Shelf",-66.1292,89.8183,1,Fretwell (2024), BAS
+emperor,"Haswell Island",-66.5308,93.0079,1,Fretwell (2024), BAS
+emperor,"Shackleton Ice Shelf",-64.9160,95.9606,1,Fretwell (2024), BAS
+emperor,"Bowman Island",-65.2795,103.1769,1,Fretwell (2024), BAS
+emperor,"Peterson Bank",-65.9175,110.2355,1,Fretwell (2024), BAS
+emperor,"Cape Poinsett",-65.7817,113.2351,1,Fretwell (2024), BAS
+emperor,"Sabrina Coast",-66.1686,121.0931,1,Fretwell (2024), BAS
+emperor,"Porpoise Bay",-66.2724,130.0168,1,Fretwell (2024), BAS
+emperor,"Dibble Glacier",-65.9999,134.7996,1,Fretwell (2024), BAS
+emperor,"Point Geologie",-66.6744,140.0052,1,Fretwell (2024), BAS
+emperor,"Mertz Glacier",-67.2576,145.9904,1,Fretwell (2024), BAS
+emperor,"Ninnis Bank",-66.8529,149.9485,1,Fretwell (2024), BAS
+emperor,"Davis Bay",-69.3276,158.4115,1,Fretwell (2024), BAS
+emperor,"Cape Washington",-74.6373,165.3821,1,Fretwell (2024), BAS
+emperor,"Yule Bay",-70.7161,166.4777,1,Fretwell (2024), BAS
+emperor,"Beaufort Island",-76.9250,167.0431,1,Fretwell (2024), BAS
+emperor,"Franklin Island",-76.1873,168.4401,1,Fretwell (2024), BAS
+emperor,"Cape Crozier",-77.4653,169.3294,1,Fretwell (2024), BAS
+emperor,"Coulman Island",-73.3483,169.6242,1,Fretwell (2024), BAS
+emperor,"Cape Roget",-71.9882,170.5972,1,Fretwell (2024), BAS
+emperor,"Gipps Island",-68.6855,-60.8912,1,Fretwell (2024), BAS
+emperor,"Vanhoffen",-66.0808,86.5284,1,Fretwell (2024), BAS

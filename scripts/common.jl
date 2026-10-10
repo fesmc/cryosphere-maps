@@ -475,6 +475,8 @@ Command-line options:
 - `tier=2`: also show the tier-2 names of the label CSV
 - `add=<name>;<name>...`: add names from the label CSV or the gazetteer
 - `list` or `list=<text>`: print the available names (matching <text>) and exit
+- `routes`: historic expedition routes (data/routes_<region>.csv)
+- `fauna`: wildlife glyphs (data/prepared/fauna_<region>.csv)
 - `full`: full-resolution grid (\$CRYOMAPS_DATA) and PDF + PNG output; without
   it, only the small PNG is made from the coarse grid in data/prepared.
 - `pdf`: also PDF + PNG output from the coarse grid
@@ -483,7 +485,7 @@ replaces the tracked small PNGs, which come from `full` runs.
 """
 function parse_args(args)
     val(key) = (i = findfirst(startswith(key*"="), args); i === nothing ? nothing : split(args[i], "="; limit=2)[2])
-    known = ("velocity", "surface", "bed", "dark", "nocontours", "full", "pdf", "list")
+    known = ("velocity", "surface", "bed", "dark", "nocontours", "full", "pdf", "list", "routes", "fauna")
     for a in args
         a in known || any(startswith(a, k*"=") for k in ("cmap", "tier", "add", "list")) || error("unknown option $a")
     end
@@ -499,8 +501,10 @@ function parse_args(args)
     list = "list" in args ? "" : val("list")
     tag = join(filter(!isempty, [ocean === :dark ? "dark" : "", contours ? "" : "nocontours",
                                  cmapname === :classic ? "" : String(cmapname), tier == 1 ? "" : "tier$tier",
-                                 isempty(add) ? "" : "custom"]), "_")
+                                 isempty(add) ? "" : "custom", "routes" in args ? "routes" : "",
+                                 "fauna" in args ? "fauna" : ""]), "_")
     return (; style, ocean, contours, velcmap=VEL_CMAPS[cmapname], tier, add, list, full="full" in args,
+              routes="routes" in args, fauna="fauna" in args,
               pdf=("full" in args || "pdf" in args),
               tag=isempty(tag) ? "" : "_"*tag)
 end
@@ -516,7 +520,7 @@ end
 
 """
 Command-line entry point of the poster scripts: `plotfun(d, style; labels,
-maxtier, ocean, contours, velcmap)` draws the poster of `region`.
+maxtier, ocean, contours, velcmap, routes, fauna)` draws the poster of `region`.
 """
 function main_poster(region, plotfun, args=ARGS)
     o = parse_args(args)
@@ -527,8 +531,11 @@ function main_poster(region, plotfun, args=ARGS)
     end
     labs = add_names(labs, gaz, o.add)
     d = load_prepared(region; o.full)
-    fig = plotfun(d, o.style; labels=labs, maxtier=o.tier, o.ocean, o.contours, o.velcmap)
+    routes = o.routes ? read_routes(region) : nothing
+    fauna  = o.fauna ? read_fauna(region) : nothing
+    fig = plotfun(d, o.style; labels=labs, maxtier=o.tier, o.ocean, o.contours, o.velcmap, routes, fauna)
     save_poster(fig, poster_path(region, o); o.pdf)
 end
 
 include("labels.jl")
+include("overlays.jl")

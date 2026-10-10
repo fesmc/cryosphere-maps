@@ -108,6 +108,7 @@ const LSTYLE = Dict(
     "glacier"    => (size=13, font=:regular, color=:black,   case=identity,  outer=true,  marker=false),
     "iceshelf"   => (size=13, font=:bold,    color=:black,   case=identity,  outer=true,  marker=false),
     "fjord"      => (size=13, font=:italic,  color=:navy,    case=identity,  outer=true,  marker=false),
+    "site"       => (size=12, font=:italic,  color=:black,   case=identity,  outer=false, marker=true),
 )
 
 "Text with a white halo drawn as a separate layer underneath (keeps glyphs crisp)."
@@ -487,7 +488,7 @@ are kept and reported.
 
 `styles` maps label types to their style (LSTYLE by default; fonts are theme
 names or font files); `ink` and `paper` are the colours of leaders, symbols and
-halos.
+halos. Returns the boxes of the drawn labels.
 """
 function draw_labels!(ax, labs, proj; layout, kmpp, scale=1.0, maxtier=1, styles=LSTYLE, types=keys(styles),
                       seacolor=:white, ink=:black, paper=:white, elbow=50.0, obstacles=Tuple[], kw...)
@@ -527,4 +528,5 @@ function draw_labels!(ax, labs, proj; layout, kmpp, scale=1.0, maxtier=1, styles
         halotext!(ax, q[1], q[2]; text=txt[k], fontsize=fs[k], font=st.font, color=col,
                   align=(ha[k], :center), halo=(l.type != "sea"), halocolor=(paper, 0.8))
     end
+    return P.boxes
 end

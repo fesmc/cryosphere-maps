@@ -12,7 +12,7 @@ const CREDITS_ANT = "Data: bed and surface topography from BedMachine Antarctica
     "equivalent of the ice above flotation. Polar stereographic projection (71°S, 0°E)."
 
 function plot_antarctica(d, style; labels=nothing, maxtier=1, scale=1.85, ocean=:light, contours=true,
-                         velcmap=CS_VEL)
+                         velcmap=CS_VEL, routes=nothing, fauna=nothing)
     xmap = (-3040.0, 3040.0); ymap = (-2600.0, 2500.0)
     pad  = 50; panel = 520.0
     H    = A0_LANDSCAPE[2] - 2pad
@@ -47,11 +47,13 @@ function plot_antarctica(d, style; labels=nothing, maxtier=1, scale=1.85, ocean=
     scalebar!(ax, xmap[1] + 150, ymap[1] + 200, 1000.0; fontsize=26)
     url = site_url!(ax, (xmap..., ymap...), kmpp; corner=:left, ocean)
 
-    if labels !== nothing
-        draw_labels!(ax, labels, PROJ_ANT; layout=:coastal, kmpp, maxtier, scale, obstacles=[url],
+    rbox, sites, rlegend = routes!(ax, routes, PROJ_ANT; kmpp, colors=ROUTE_COLORS, scale, obstacles=[url],
+                                   limits=(xmap..., ymap...))
+    lbox = labels === nothing ? Tuple[] :
+        draw_labels!(ax, vcat(labels, sites), PROJ_ANT; layout=:coastal, kmpp, maxtier, scale, obstacles=[url; rbox],
                      icemask=r.ice, shelfmask=r.shelf, groundedmask=d.grounded, x=r.x, y=r.y, offset=120.0,
                      limits=(xmap..., ymap...), seacolor=seacolor(style, ocean))
-    end
+    _, flegend = fauna!(ax, fauna, PROJ_ANT; kmpp, scale, obstacles=[url; rbox; lbox])
 
     side = fig[1, 2] = GridLayout(width=panel)
     top  = side[1, 1] = GridLayout(valign=:top, tellheight=false)
@@ -64,7 +66,8 @@ function plot_antarctica(d, style; labels=nothing, maxtier=1, scale=1.85, ocean=
     contour_entry = contours || style == :surface ?
         [(LineElement(color=(:gray20, 0.7), linewidth=0.9scale), "500 m surface contours")] : []
     symbol_legend!(top[5, 1]; scale, labelsize=26, rowgap=2, halign=:left, tellheight=true,
-                   extra=vcat([(LineElement(color=(:gray25, 0.8), linewidth=1.2), "Grounding line")], contour_entry, seaice))
+                   extra=vcat([(LineElement(color=(:gray25, 0.8), linewidth=1.2), "Grounding line")], contour_entry, seaice,
+                              rlegend, flegend))
     numbers_table!(top[6, 1], d.attrs, [("All", ""), ("East", "east_"), ("West", "west_"), ("Pen.", "peninsula_")];
                    title="Antarctic Ice Sheet in numbers", fontsize=24, halign=:left,
                    note="East, West, Pen.(insula): IMBIE 2 regions, with ice shelves\nand islands given to the nearest region")

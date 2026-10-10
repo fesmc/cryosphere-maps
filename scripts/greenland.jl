@@ -14,7 +14,7 @@ const CREDITS_GRL = "Data: bed and surface topography from BedMachine Greenland 
     "Polar stereographic projection (70°N, 45°W)."
 
 function plot_greenland(d, style; labels=nothing, maxtier=1, scale=1.85, ocean=:light, contours=true,
-                         velcmap=CS_VEL)
+                         velcmap=CS_VEL, routes=nothing, fauna=nothing)
     # Map window (km) fills the page width; beyond the BedMachine domain the
     # topography/bathymetry is ETOPO 2022 and glacier ice is from RGI 6.0.
     pad  = 70
@@ -57,11 +57,14 @@ function plot_greenland(d, style; labels=nothing, maxtier=1, scale=1.85, ocean=:
     scalebar!(ax, 700.0, ymap[1] + 110, 400.0; fontsize=26, color=(ocean === :dark ? :white : :black))
     url = site_url!(ax, (xl..., ymap...), kmpp; ocean)
 
-    if labels !== nothing
-        draw_labels!(ax, labels, PROJ_GRL; layout=:coastal, kmpp, maxtier, scale, obstacles=[regions; url],
+    rbox, sites, rlegend = routes!(ax, routes, PROJ_GRL; kmpp, colors=ROUTE_COLORS, scale, obstacles=[regions; url],
+                                   limits=(xl..., ymap...))
+    lbox = labels === nothing ? Tuple[] :
+        draw_labels!(ax, vcat(labels, sites), PROJ_GRL; layout=:coastal, kmpp, maxtier, scale,
+                     obstacles=[regions; url; rbox],
                      icemask=r.ice, groundedmask=d.grounded, x=r.x, y=r.y, offset=50.0, maxlead=300.0, tmax=120.0,
                      seacolor=seacolor(style, ocean), limits=(xl..., ymap...))
-    end
+    _, flegend = fauna!(ax, fauna, PROJ_GRL; kmpp, scale, obstacles=[regions; url; rbox; lbox])
 
     foot = fig[3, 1] = GridLayout()
     bars = foot[1, 1] = GridLayout()
@@ -72,7 +75,7 @@ function plot_greenland(d, style; labels=nothing, maxtier=1, scale=1.85, ocean=:
     contour_entry = contours || style == :surface ?
         [(LineElement(color=(:gray20, 0.7), linewidth=0.9scale), "500 m surface contours")] : []
     symbol_legend!(foot[1, 2]; scale, domes=false, labelsize=26, nbanks=2, rowgap=2, tellheight=true,
-                   extra=vcat(contour_entry, seaice))
+                   extra=vcat(contour_entry, seaice, rlegend, flegend))
     numbers_box!(foot[1, 3], d.attrs; title="Greenland Ice Sheet in numbers", fontsize=26, valign=:top)
     qr_code!(foot[1, 4]; size=150, fontsize=22, valign=:top)
     colgap!(foot, 60)
