@@ -159,15 +159,15 @@ function leader_attach(p, b, pad)
     return (p[1], p[2] > b[4] ? b[4] + pad : b[3] - pad)
 end
 
-"Leader line with a white casing, visible on both dark ocean and white ice."
-function leader!(ax, xs, ys; lw)
-    lines!(ax, xs, ys; color=(:white, 0.7), linewidth=3lw)
-    lines!(ax, xs, ys; color=(:black, 0.75), linewidth=lw)
+"Leader line with a light casing, visible on both dark ocean and white ice."
+function leader!(ax, xs, ys; lw, color=(:black, 0.75), casing=(:white, 0.7))
+    lines!(ax, xs, ys; color=casing, linewidth=3lw)
+    lines!(ax, xs, ys; color, linewidth=lw)
 end
 
-"Text box (width, height) in km, measured with Makie's text layout for the theme font."
+"Text box (width, height) in km, measured with Makie's text layout for a theme font (Symbol) or a font file."
 function textbox(txt, size, kmpp; font=:regular)
-    ft = Makie.to_font(Makie.theme(:fonts)[font][])
+    ft = Makie.to_font(font isa Symbol ? Makie.theme(:fonts)[font][] : font)
     w = Makie.widths(Makie.text_bb(txt, ft, Float32(size)))[1]
     return (w*kmpp, 1.15*size*kmpp)
 end
@@ -177,6 +177,24 @@ function boxat(q, wh, ha)
     w, h = wh
     x0 = ha === :left ? q[1] : (ha === :right ? q[1] - w : q[1] - w/2)
     return (x0, x0 + w, q[2] - h/2, q[2] + h/2)
+end
+
+"""
+Boxes (xmin, xmax, ymin, ymax) of half-width `hw` km every `step` km along a
+NaN-separated polyline, as label obstacles for lines.
+"""
+function polyline_boxes(pts; step=30.0, hw=10.0)
+    boxes = Tuple[]
+    for k in 1:length(pts)-1
+        a, b = pts[k], pts[k+1]
+        (any(isnan, a) || any(isnan, b)) && continue
+        n = max(1, ceil(Int, hypot((b .- a)...)/step))
+        for t in range(0, 1, length=n+1)[1:end-1]
+            q = a .+ t .* (b .- a)
+            push!(boxes, (q[1] - hw, q[1] + hw, q[2] - hw, q[2] + hw))
+        end
+    end
+    return boxes
 end
 
 overlap_area(a, b) = max(0.0, min(a[2], b[2]) - max(a[1], b[1])) * max(0.0, min(a[4], b[4]) - max(a[3], b[3]))
@@ -351,11 +369,11 @@ Positions of the labels `keep` (see draw_labels!). Returns the label styles,
 texts, font sizes, anchors, box sizes, positions, alignments, the kind flags
 (outer, area, demoted) and the final label boxes.
 """
-function place_labels(keep; layout, proj, kmpp, scale, obstacles, icemask=nothing, shelfmask=nothing,
+function place_labels(keep; layout, proj, kmpp, scale, obstacles, styles=LSTYLE, icemask=nothing, shelfmask=nothing,
                       groundedmask=nothing, x=nothing, y=nothing, offset=150.0, maxlead=500.0, tmax=250.0,
                       maxpush=150.0, shelf_area_min=60_000.0, xsplit=0.0, xleft=0.0, xright=0.0,
                       colalign=:outward, limits=nothing, maplimits=limits)
-    sts  = [LSTYLE[l.type] for l in keep]
+    sts  = [styles[l.type] for l in keep]
     txt  = [st.case(l.name) for (l, st) in zip(keep, sts)]
     fs   = [st.size*scale for st in sts]
     pts  = [project(proj, l.lon, l.lat) for l in keep]
@@ -466,18 +484,22 @@ Where labels still overlap after the layout, the less important one (higher
 tier; the later one of two tier-2 labels) is dropped and the layout repeated,
 so dense label sets show as many names as fit. Overlaps among tier 0-1 labels
 are kept and reported.
+
+`styles` maps label types to their style (LSTYLE by default; fonts are theme
+names or font files); `ink` and `paper` are the colours of leaders, symbols and
+halos.
 """
-function draw_labels!(ax, labs, proj; layout, kmpp, scale=1.0, maxtier=1, types=keys(LSTYLE),
-                      seacolor=:white, elbow=50.0, obstacles=Tuple[], kw...)
-    keep = [l for l in labs if l.tier <= maxtier && l.type in types && haskey(LSTYLE, l.type)]
+function draw_labels!(ax, labs, proj; layout, kmpp, scale=1.0, maxtier=1, styles=LSTYLE, types=keys(styles),
+                      seacolor=:white, ink=:black, paper=:white, elbow=50.0, obstacles=Tuple[], kw...)
+    keep = [l for l in labs if l.tier <= maxtier && l.type in types && haskey(styles, l.type)]
     dropped = String[]
-    P = place_labels(keep; layout, proj, kmpp, scale, obstacles, kw...)
+    P = place_labels(keep; layout, proj, kmpp, scale, obstacles, styles, kw...)
     for _ in 1:10
         lose = overlap_losers(P.boxes, keep, obstacles)
         isempty(lose) && break
         append!(dropped, [keep[k].name for k in lose])
         keep = keep[setdiff(eachindex(keep), lose)]
-        P = place_labels(keep; layout, proj, kmpp, scale, obstacles, kw...)
+        P = place_labels(keep; layout, proj, kmpp, scale, obstacles, styles, kw...)
     end
     isempty(dropped) || println("labels: no room for ", join(dropped, ", "))
     (; sts, txt, fs, pts, wh, pos, ha, outer, area, demoted) = P
@@ -491,18 +513,18 @@ function draw_labels!(ax, labs, proj; layout, kmpp, scale=1.0, maxtier=1, types=
             a = leader_attach(p, boxat(q, wh[k], ha[k]), 4*kmpp*scale)
             if layout === :columns
                 xe = a[1] + (p[1] > a[1] ? elbow : -elbow)
-                leader!(ax, [p[1], xe, a[1]], [p[2], a[2], a[2]]; lw=0.6*scale)
+                leader!(ax, [p[1], xe, a[1]], [p[2], a[2], a[2]]; lw=0.6*scale, color=(ink, 0.75), casing=(paper, 0.7))
             else
-                leader!(ax, [p[1], a[1]], [p[2], a[2]]; lw=0.6*scale)
+                leader!(ax, [p[1], a[1]], [p[2], a[2]]; lw=0.6*scale, color=(ink, 0.75), casing=(paper, 0.7))
             end
-            scatter!(ax, [p]; markersize=3.5*scale, color=:black)
+            scatter!(ax, [p]; markersize=3.5*scale, color=ink)
         elseif st.marker
             mk = l.type == "icecore" ? :diamond : (l.type == "dome" ? :utriangle : :circle)
-            scatter!(ax, [p]; markersize=8*scale, marker=mk, color=col, strokecolor=:white, strokewidth=0.8*scale)
+            scatter!(ax, [p]; markersize=8*scale, marker=mk, color=col, strokecolor=paper, strokewidth=0.8*scale)
         elseif demoted[k]
-            scatter!(ax, [p]; markersize=4*scale, color=:black)
+            scatter!(ax, [p]; markersize=4*scale, color=ink)
         end
         halotext!(ax, q[1], q[2]; text=txt[k], fontsize=fs[k], font=st.font, color=col,
-                  align=(ha[k], :center), halo=(l.type != "sea"))
+                  align=(ha[k], :center), halo=(l.type != "sea"), halocolor=(paper, 0.8))
     end
 end
