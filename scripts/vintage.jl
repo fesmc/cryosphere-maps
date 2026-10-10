@@ -270,7 +270,7 @@ graticule, routes, labels, wildlife, frame, compass rose and scale bar.
 Returns the legend entries.
 """
 function vintage_map!(ax, d, region; limits, kmpp, scale, proj, labels, routes, fauna, seaice, seeds,
-                      graticule, rose, scalebar, bar, faunanames=Dict{String, String}())
+                      graticule, rose, scalebar, bar, faunanames=Dict{String, String}(), styles=LSTYLE_VINTAGE)
     r = d.r
     ix = findall(xi -> limits[1] <= xi <= limits[2], r.x); iy = findall(yi -> limits[3] <= yi <= limits[4], r.y)
     xs = r.x[ix]; ys = r.y[iy]; h = r.dx/2
@@ -301,7 +301,7 @@ function vintage_map!(ax, d, region; limits, kmpp, scale, proj, labels, routes, 
 
     rbox, sites, rlegend = routes!(ax, routes, proj; kmpp, colors=V_ROUTE_COLORS, scale, font=VF.italic, paper=PAPER,
                                    obstacles, limits)
-    lbox = draw_labels!(ax, vcat(labels, sites), proj; layout=:coastal, kmpp, scale, styles=LSTYLE_VINTAGE,
+    lbox = draw_labels!(ax, vcat(labels, sites), proj; layout=:coastal, kmpp, scale, styles,
                         ink=INK, paper=PAPER, seacolor=SEA_INK, obstacles=vcat(obstacles, rbox), limits,
                         icemask=r.ice, shelfmask=r.shelf, groundedmask=d.grounded, x=r.x, y=r.y,
                         offset=region == "greenland" ? 50.0 : 120.0, maxlead=region == "greenland" ? 300.0 : 500.0,
@@ -321,6 +321,11 @@ function vintage_map!(ax, d, region; limits, kmpp, scale, proj, labels, routes, 
 end
 
 const CREDITS_VINTAGE = "Routes from the expedition accounts and published positions (data/routes_REGION.csv). "
+
+# Greenland: sea names with one word per line, except the Arctic Ocean in the narrow strip at the top
+const ONE_LINE_SEAS = ("Arctic Ocean",)
+const STYLES_GREENLAND = merge(LSTYLE_VINTAGE, Dict("sea" => (; LSTYLE_VINTAGE["sea"]...,
+    case=s -> spaced(s; maxlen=s in ONE_LINE_SEAS ? typemax(Int) : 0))))
 
 # Greenlandic (kalaallisut) words on the Greenland map
 const GREENLANDIC_FAUNA = Dict("polarbear" => "Nanoq · polar bear denning area",
@@ -385,7 +390,7 @@ function plot_vintage_greenland(d; labels, routes, fauna, scale=1.85)
                           seaice="03", seeds=[(limits[2] - 50, limits[3] + 50)],
                           graticule=(lats=60:5:80, lons=-80:10:0, latrange=(58, 84)),
                           rose=(xl[1] + 260.0, ymap[1] + 420.0, 150.0), scalebar=(700.0, ymap[1] + 110), bar=100.0,
-                          faunanames=GREENLANDIC_FAUNA)
+                          faunanames=GREENLANDIC_FAUNA, styles=STYLES_GREENLAND)
 
     foot = fig[3, 1] = GridLayout()
     flow_colorbar!(foot[1, 1]; width=500, valign=:top)
