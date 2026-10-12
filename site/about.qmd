@@ -128,3 +128,11 @@ each update, so the tiles and PDFs do not build up a history in the repository.
 The [repository](https://github.com/fesmc/cryosphere-maps) contains all
 scripts, with the steps to download and prepare the data, plot the posters and
 build this site in its README.
+
+## Versions
+
+The website shows the latest version of the maps. The posters (A0 PDFs and
+PNGs) of each version are archived as a
+[GitHub release](https://github.com/fesmc/cryosphere-maps/releases).
+
+- [v1.0](https://github.com/fesmc/cryosphere-maps/releases/tag/v1.0) (October 2026, current): first release.
