@@ -200,6 +200,13 @@ run as SLURM jobs from the repo root, with logs in `logs/`.
    ```
    `site/publish.sh` renders the site and replaces the `gh-pages` branch by a
    single commit, so tiles and PDFs do not accumulate in the repository.
+   For a new version, set `version` in `site/_variables.yml` (shown in the
+   site footer and next to the URL on the posters), tag the commit
+   (`v<version>`) and push the tag, plot the posters and archive them as a
+   GitHub release, and add the version to the end of `site/about.qmd`:
+   ```bash
+   site/release.sh
+   ```
    Without albedo, `julia --project=. scripts/web.jl` builds all assets from
    the coarse grids in the repo, for a local preview.
 
@@ -295,7 +302,8 @@ website shows them on the Historical page.
 - `scripts/smooth.jl`: Gaussian smoothing of grids.
 - `scripts/web.jl`: step 3, the web map assets and the poster galleries.
 - `site/`: the Quarto website; `site/js/map.js` is the interactive map,
-  `site/publish.sh` publishes it.
+  `site/publish.sh` publishes it, `site/release.sh` archives the posters of a
+  version as a GitHub release.
 - `scripts/make_qr.jl`: a one-off that wrote the QR code of the website
   (`data/qr_site.txt`).
 - `scripts/add_tiers.jl`: a one-off that added the `tier` column to the label
