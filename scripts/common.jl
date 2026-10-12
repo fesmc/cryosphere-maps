@@ -410,14 +410,18 @@ end
 "Website URL (first line of data/qr_site.txt, see scripts/make_qr.jl), without the scheme."
 site_url() = replace(strip(readline(joinpath(ROOT, "data", "qr_site.txt"))[2:end]), r"^https?://" => "", r"/$" => "")
 
+"Version of the maps (`version:` in site/_variables.yml, also in the site footer)."
+site_version() = match(r"^version:\s*\"(.+)\"", readline(joinpath(ROOT, "site", "_variables.yml")))[1]
+
 """
-Website URL in a corner (`corner` = :right or :left; `bottom` or top) inside
-the map with `limits` (xmin, xmax, ymin, ymax in km), next to the scale bar.
+Website URL and version in a corner (`corner` = :right or :left; `bottom` or
+top) inside the map with `limits` (xmin, xmax, ymin, ymax in km), next to the
+scale bar.
 Returns its box (km), for labels to keep clear of.
 """
 function site_url!(ax, limits, kmpp; corner=:right, bottom=true, ocean=:light, fontsize=28, margin=15,
                    font=:regular, color=(ocean === :light ? :gray45 : (:white, 0.75)))
-    txt = site_url()
+    txt = "$(site_url()) · v$(site_version())"
     p = (corner === :right ? limits[2] - margin*kmpp : limits[1] + margin*kmpp,
          bottom ? limits[3] + margin*kmpp : limits[4] - margin*kmpp)
     text!(ax, p...; text=txt, fontsize, font, color, align=(corner, bottom ? :bottom : :top))
