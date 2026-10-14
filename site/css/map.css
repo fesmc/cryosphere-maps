@@ -8,6 +8,7 @@
 .cryo-panel summary { font-weight: 600; margin: 6px 0 2px; cursor: pointer; }
 .cryo-panel label { display: block; margin: 1px 0; }
 .cryo-search { width: 100%; padding: 4px 6px; border: 1px solid #bbb; border-radius: 4px; }
+.cryo-adapt { margin-top: 2px; }
 .cryo-cb-label { margin-top: 6px; }
 .cryo-cb { height: 12px; border: 1px solid #999; }
 .cryo-cb-ticks { position: relative; height: 16px; font-size: 11px; }
