@@ -30,6 +30,8 @@ const WEB_STYLES = [("velocity", "Ice velocity", :velocity, :classic),
                     ("velocity_ember", "Ice velocity (ember)", :velocity, :ember),
                     ("surface", "Surface elevation", :surface, :classic),
                     ("bed", "Bed elevation", :bed, :classic)]
+# styles drawn in the browser from packed data tiles (see `encode_raster`)
+const ADAPTIVE_STYLES = (:surface, :bed)
 const SEAICE_MONTHS = Dict("greenland" => ("03", "09"), "antarctica" => ("09", "02"))
 
 # ---------------------------------------------------------------------------
@@ -54,8 +56,15 @@ end
 "Number of zoom levels below the native one such that level 0 fits in about one tile."
 zmax_for(n) = max(0, ceil(Int, log2(n/TILE)))
 
-"Write the tile pyramid of an image (rows top-down) to dir/<z>/<x>/<y>.jpg; returns zmax."
-function write_tiles(a, dir; quality=85)
+"Every second row and column (the top-left pixel of each 2×2 block): overviews of packed data tiles, which must not be averaged."
+decimate(a) = a[1:2:end, 1:2:end]
+
+"""
+Write the tile pyramid of an image (rows top-down) to dir/<z>/<x>/<y>.<ext>; returns zmax.
+Colour images are JPEG tiles with 2×2-averaged overviews; `data=true` writes lossless PNG
+tiles (packed values, see `encode_raster`) with decimated overviews.
+"""
+function write_tiles(a, dir; quality=85, data=false)
     zmax = zmax_for(maximum(size(a)))
     for z in zmax:-1:0
         nr, nc = size(a)
@@ -63,13 +72,49 @@ function write_tiles(a, dir; quality=85)
             t = fill(RGB{N0f8}(1, 1, 1), TILE, TILE)            # white beyond the grid edge
             rr = ty*TILE+1:min((ty + 1)*TILE, nr); cc = tx*TILE+1:min((tx + 1)*TILE, nc)
             t[1:length(rr), 1:length(cc)] .= a[rr, cc]
-            f = joinpath(dir, string(z), string(tx), "$(ty).jpg")
+            f = joinpath(dir, string(z), string(tx), "$(ty).$(data ? "png" : "jpg")")
             mkpath(dirname(f))
-            jpeg_encode(f, t; quality)
+            data ? Makie.FileIO.save(f, t) : jpeg_encode(f, t; quality)
         end
-        z > 0 && (a = halve(a))
+        z > 0 && (a = data ? decimate(a) : halve(a))
     end
     return zmax
+end
+
+# ---------------------------------------------------------------------------
+# Data tiles of the surface and bed styles: the browser colours them with
+# scales that adapt to the part of the map in view (site/js/map.js)
+# ---------------------------------------------------------------------------
+
+const ZOFFSET = 8192      # packed elevation: z + ZOFFSET in 0:16383 (14 bit, 1 m)
+const HS_LO   = -0.65     # packed hillshade: 254(hs - HS_LO) in 0:254
+
+"""
+Pack a raster style into RGB bytes that the browser decodes (`pixel` in map.js):
+R = 254(hillshade - HS_LO), G = 64class + (z + ZOFFSET) ÷ 256, B = (z + ZOFFSET) % 256.
+Surface style: class 0 ocean (z = bed), 1 rock, 2 grounded ice, 3 ice shelf (z = surface);
+bed style: class 0 ocean, 1 land (z = bed). Pure white (255, 255, 255) is outside the grid.
+"""
+function encode_raster(style, r)
+    nx, ny = size(r.zs)
+    img = Matrix{RGB{N0f8}}(undef, nx, ny)
+    for j in 1:ny, i in 1:nx
+        ocean = r.ocean[i, j] && !r.ice[i, j]
+        if style === :bed
+            cls, z, hs = ocean ? 0 : 1, r.zb[i, j], r.hs_b[i, j]
+        elseif ocean
+            cls, z, hs = 0, r.zb[i, j], r.hs_b[i, j]
+        elseif !r.ice[i, j]
+            cls, z, hs = 1, r.zs[i, j], r.hs_b[i, j]
+        else
+            cls, z, hs = r.shelf[i, j] ? 3 : 2, r.zs[i, j], r.hs_s[i, j]
+        end
+        v = isnan(z) ? ZOFFSET : clamp(round(Int, z) + ZOFFSET, 0, 16383)
+        h = isnan(hs) ? 0 : round(Int, 254*clamp(hs - HS_LO, 0, 1))
+        img[i, j] = RGB{N0f8}(reinterpret(N0f8, UInt8(h)), reinterpret(N0f8, UInt8(64cls + v ÷ 256)),
+                              reinterpret(N0f8, UInt8(v % 256)))
+    end
+    return img
 end
 
 # ---------------------------------------------------------------------------
@@ -137,12 +182,16 @@ function build_region(region; full)
     d = load_prepared(region; full)
     r = d.r; x, y, dx = r.x, r.y, r.dx
 
-    # raster tiles of each style
+    # raster tiles of each style; the surface and bed styles are data tiles for the adaptive colour scales
     zmax = 0
     for (id, _, style, cm) in WEB_STYLES
-        img = compose(style, r; lim..., ocean=:light, velcmap=VEL_CMAPS[cm])
         dir = joinpath(out, "tiles", id); rm(dir; recursive=true, force=true)
-        zmax = write_tiles(rows_top_down(img), dir)
+        if style in ADAPTIVE_STYLES
+            zmax = write_tiles(rows_top_down(encode_raster(style, r)), dir; data=true)
+        else
+            img = compose(style, r; lim..., ocean=:light, velcmap=VEL_CMAPS[cm])
+            zmax = write_tiles(rows_top_down(img), dir)
+        end
         println("tiles: ", region, " ", id, " (", zmax + 1, " levels)")
     end
 
@@ -184,8 +233,17 @@ function build_region(region; full)
         "region" => region, "epsg" => "EPSG:$(g.epsg)", "proj4" => PROJ4[region],
         "extent" => [x0, y0, x1, y1], "origin" => [x0, y1], "tileSize" => TILE,
         "resolutions" => [1e3*dx*2.0^(zmax - z) for z in 0:zmax],
-        "styles" => [Dict("id" => id, "name" => name, "colorbars" => colorbars(style, cm, lim))
+        "styles" => [Dict("id" => id, "name" => name, "colorbars" => colorbars(style, cm, lim),
+                          "adaptive" => style in ADAPTIVE_STYLES ? String(style) : nothing)
                      for (id, name, style, cm) in WEB_STYLES],
+        # decoding and colouring of the data tiles (after `compose`); limits are the colour scales of the whole map
+        "raster" => Dict("zoffset" => ZOFFSET, "hsLo" => HS_LO, "shelf" => hexcolor(C_SHELF),
+                         "limits" => Dict("srf" => lim.srflim, "bed" => lim.bedlim, "ocean" => lim.oceanlim),
+                         "ramps" => Dict("ice" => gradient_stops(CS_ICE; n=256),
+                                         "ocean" => gradient_stops(CS_OCEAN_LIGHT; n=256),
+                                         "rock" => gradient_stops(CS_ROCK; n=256),
+                                         "bedLo" => gradient_stops(CS_BED_LO; n=256),
+                                         "bedHi" => gradient_stops(CS_BED_HI; n=256))),
         "seaice" => seaice,
         "numbers" => Dict(String(k) => Float64(v) for (k, v) in a if v isa Real),
         "resolution_m" => 1e3dx)

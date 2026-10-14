@@ -68,6 +68,68 @@
       (cols.length > 1 ? '<small>Regions of IMBIE 2; ice shelves and islands go to the nearest region.</small>' : '');
   }
 
+
+  // --- adaptive colour scales ------------------------------------------------
+  // The surface and bed styles are tiles of packed data (R: hillshade, G/B: class and elevation,
+  // scripts/web.jl `encode_raster`), coloured here with limits taken from the part of the map in
+  // view. The colour maps are those of the posters (`compose` in scripts/common.jl).
+  const TILE_PX = 256, HIST_N = 16384, ADAPT_MS = 120, RAW_CACHE = 256;
+  const clamp01 = t => t < 0 ? 0 : t > 1 ? 1 : t;
+  const hexRgb = h => [1, 3, 5].map(k => parseInt(h.slice(k, k + 2), 16));
+
+  // lookup tables [r, g, b, ...] of the 256-step colour maps
+  function rampTables(ramps) {
+    const out = {};
+    for (const [k, stops] of Object.entries(ramps)) {
+      out[k] = new Uint8Array(3 * stops.length);
+      stops.forEach((h, i) => out[k].set(hexRgb(h), 3 * i));
+    }
+    return out;
+  }
+
+  // colour of one packed pixel into out[o..o+3] (after `compose`: colour map, hillshade, then mixing)
+  function paintTile(raw, mode, lim, R, T, out) {
+    const shelf = R.shelfRgb, n = T.ice.length / 3 - 1;
+    const srf = lim.srf, ocean = lim.ocean, bed = lim.bed;
+    for (let o = 0; o < raw.length; o += 4) {
+      const r = raw[o], g = raw[o + 1], b = raw[o + 2];
+      let c0, c1, c2;
+      if (r === 255 && g === 255 && b === 255) { out[o] = out[o + 1] = out[o + 2] = out[o + 3] = 255; continue; }  // beyond the grid
+      const cls = g >> 6, z = ((g & 63) << 8 | b) - R.zoffset, hs = r / 254 + R.hsLo;
+      let ramp, t, strength = 0.9, white = 0;
+      if (mode === 'bed') {
+        if (z < 0) { ramp = T.bedLo; t = z / bed[0]; } else { ramp = T.bedHi; t = z / bed[1]; }
+        if (cls === 0) white = 0.25;
+      } else if (cls === 0) { ramp = T.ocean; t = (z - ocean[0]) / (ocean[1] - ocean[0]); strength = 0.25; }
+      else if (cls === 1) { ramp = T.rock; t = z / 2000; strength = 1; }
+      else if (cls === 2) { ramp = T.ice; t = (z - srf[0]) / (srf[1] - srf[0]); }
+      else { ramp = null; strength = 0.6; }
+      if (ramp) { const k = 3 * Math.round(n * clamp01(t)); c0 = ramp[k]; c1 = ramp[k + 1]; c2 = ramp[k + 2]; }
+      else { c0 = shelf[0]; c1 = shelf[1]; c2 = shelf[2]; }
+      const f = 1 + strength * hs;
+      c0 = Math.min(c0 * f, 255); c1 = Math.min(c1 * f, 255); c2 = Math.min(c2 * f, 255);
+      out[o] = c0 + white * (255 - c0); out[o + 1] = c1 + white * (255 - c1); out[o + 2] = c2 + white * (255 - c2);
+      out[o + 3] = 255;
+    }
+    return out;
+  }
+
+  // 1, 2 or 5 times a power of ten giving about five steps over span
+  function niceStep(span) {
+    const raw = Math.max(span, 1) / 5, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag;
+    return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * mag;
+  }
+  function niceTicks(lo, hi) {
+    const step = niceStep(hi - lo), out = [];
+    for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(Math.round(v));
+    return out;
+  }
+  function percentile(h, total, q) {
+    let acc = 0; const goal = q * total;
+    for (let i = 0; i < h.length; i++) { acc += h[i]; if (acc >= goal) return i; }
+    return h.length - 1;
+  }
+
   function init(cfg) {
     proj4.defs(cfg.epsg, cfg.proj4);
     ol.proj.proj4.register(proj4);
@@ -76,10 +138,45 @@
     const grid = new ol.tilegrid.TileGrid({extent: cfg.extent, origin: cfg.origin,
                                            resolutions: cfg.resolutions, tileSize: cfg.tileSize});
 
+    // adaptive styles: packed data tiles coloured in the browser with the limits of the view
+    const R = Object.assign({shelfRgb: hexRgb(cfg.raster.shelf)}, cfg.raster), T = rampTables(R.ramps);
+    const defaults = R.limits;
+    const limits = cfg.styles.map(() => Object.assign({}, defaults));      // current limits per style
+    const rawTiles = new Map();                                            // decoded packed tiles
+    const paintBuf = new Uint8ClampedArray(4 * TILE_PX * TILE_PX);
+    const adaptiveOn = () => adaptToggle.checked;
+
+    function rawTile(i, z, x, y) {
+      const key = `${i}/${z}/${x}/${y}`;
+      if (!rawTiles.has(key)) {
+        rawTiles.set(key, fetch(`${base}tiles/${cfg.styles[i].id}/${z}/${x}/${y}.png`)
+          .then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+          .then(b => createImageBitmap(b, {colorSpaceConversion: 'none', premultiplyAlpha: 'none'}))
+          .then(bmp => {
+            const ctx = new OffscreenCanvas(TILE_PX, TILE_PX).getContext('2d', {willReadFrequently: true});
+            ctx.drawImage(bmp, 0, 0);
+            return ctx.getImageData(0, 0, TILE_PX, TILE_PX).data;
+          }).catch(e => { rawTiles.delete(key); throw e; }));
+        if (rawTiles.size > RAW_CACHE) rawTiles.delete(rawTiles.keys().next().value);
+      }
+      return rawTiles.get(key);
+    }
+
+    function adaptiveSource(i, mode) {
+      return new ol.source.DataTile({projection: proj, tileGrid: grid, transition: 0, interpolate: true,
+        loader: (z, x, y) => rawTile(i, z, x, y).then(raw => {
+          const cv = document.createElement('canvas'); cv.width = cv.height = TILE_PX;
+          const px = paintTile(raw, mode, limits[i], R, T, paintBuf);
+          cv.getContext('2d').putImageData(new ImageData(px, TILE_PX, TILE_PX), 0, 0);
+          return cv;
+        })});
+    }
+
     const baseLayers = cfg.styles.map((s, i) => new ol.layer.Tile({
       visible: i === 0,
-      source: new ol.source.XYZ({projection: proj, tileGrid: grid, transition: 0,
-                                 url: base + 'tiles/' + s.id + '/{z}/{x}/{y}.jpg'}),
+      source: s.adaptive ? adaptiveSource(i, s.adaptive)
+        : new ol.source.XYZ({projection: proj, tileGrid: grid, transition: 0,
+                             url: base + 'tiles/' + s.id + '/{z}/{x}/{y}.jpg'}),
     }));
 
     const gj = new ol.format.GeoJSON({dataProjection: proj, featureProjection: proj});
@@ -153,14 +250,40 @@
            ['seaice', 'Sea-ice edge', true], ['graticule', 'Graticule', false]].map(([k, t, on]) =>
           `<label><input type="checkbox" data-layer="${k}" ${on ? 'checked' : ''}> ${t}</label>`).join('')}
       </details>
-      <details open><summary>Legend</summary><div class="cryo-legend"></div></details>
+      <details open><summary>Legend</summary>
+        <label class="cryo-adapt" title="Stretch the colours over the elevations in view"><input type="checkbox" checked> Adapt colours to view</label>
+        <div class="cryo-legend"></div></details>
       <details><summary>Key numbers</summary>${numbersTable(cfg.numbers)}</details>`;
 
     // on small screens start with the panel folded, except the search box
     if (el.clientWidth < 700) panel.querySelectorAll('details').forEach(d => d.open = false);
 
+    const adaptToggle = panel.querySelector('.cryo-adapt input');
+    let active = 0;                                  // index of the visible style
+
+    // colour bars of an adaptive style for its current limits (after `colorbars` in scripts/web.jl)
+    function adaptiveBars(i) {
+      const L = limits[i], sample = (ramp, f, n = 16) =>
+        Array.from({length: n}, (_, k) => { const j = 3 * Math.round(255 * clamp01(f(k / (n - 1)))); return `rgb(${ramp[j]},${ramp[j + 1]},${ramp[j + 2]})`; });
+      const pos = (v, [lo, hi]) => (v - lo) / (hi - lo);
+      if (cfg.styles[i].adaptive === 'bed') {
+        const [lo, hi] = L.bed, stops = Array.from({length: 24}, (_, k) => {
+          const v = lo + (hi - lo) * k / 23, ramp = v < 0 ? T.bedLo : T.bedHi, j = 3 * Math.round(255 * clamp01(v < 0 ? v / lo : v / hi));
+          return `rgb(${ramp[j]},${ramp[j + 1]},${ramp[j + 2]})`; });
+        return [{label: 'Bed elevation [m]', stops, ticks: niceTicks(lo, hi).map(v => [pos(v, L.bed), String(v)])}];
+      }
+      const [olo, ohi] = L.ocean;
+      return [{label: 'Ice-surface elevation [m]', stops: sample(T.ice, t => t),
+               ticks: niceTicks(...L.srf).map(v => [pos(v, L.srf), String(v)])},
+              // ocean depth runs from the shallow end (right colour of the map ramp) to the deep end
+              {label: 'Ocean depth [m]', stops: sample(T.ocean, t => 1 - t),
+               ticks: niceTicks(-ohi, -olo).map(d => [(d + ohi) / (ohi - olo), String(d)])}];
+    }
+
     function legend(i) {
-      const bars = cfg.styles[i].colorbars.map(b => `
+      const adapt = !!cfg.styles[i].adaptive && adaptiveOn();
+      adaptToggle.parentNode.style.display = cfg.styles[i].adaptive ? '' : 'none';
+      const bars = (adapt ? adaptiveBars(i) : cfg.styles[i].colorbars).map(b => `
         <div class="cryo-cb-label">${b.label}</div>
         <div class="cryo-cb" style="background: linear-gradient(to right, ${b.stops.join(',')})"></div>
         <div class="cryo-cb-ticks">${b.ticks.map(([p, t]) => `<span style="left:${100 * p}%">${t}</span>`).join('')}</div>`).join('');
@@ -168,9 +291,72 @@
         stroke="rgba(29,78,137,0.8)" stroke-width="1.6" stroke-dasharray="${s.dash.join(' ')}"/></svg> ${s.label}</div>`).join('');
       panel.querySelector('.cryo-legend').innerHTML = bars + ice;
     }
+
+    // limits of style i for the part of the map in view: 1st to 99th percentile of the elevations
+    // (surface style: of the grounded ice and, separately, the ocean), rounded outwards to nice steps
+    async function viewLimits(i) {
+      const mode = cfg.styles[i].adaptive, res = view.getResolution(), z = grid.getZForResolution(res);
+      const size = map.getSize(), w = size[0] - (el.clientWidth > 900 ? 320 : 0);
+      const a = map.getCoordinateFromPixel([0, 0]), b = map.getCoordinateFromPixel([Math.max(w, 50), size[1]]);
+      if (!a || !b) return null;
+      const ext = [a[0], b[1], b[0], a[1]];
+      const rng = grid.getTileRangeForExtentAndZ(ext, z), full = grid.getFullTileRange(z), tres = grid.getResolution(z);
+      const hists = [new Int32Array(HIST_N), new Int32Array(HIST_N)], counts = [0, 0];
+      const jobs = [];
+      for (let x = Math.max(rng.minX, full.minX); x <= Math.min(rng.maxX, full.maxX); x++)
+        for (let y = Math.max(rng.minY, full.minY); y <= Math.min(rng.maxY, full.maxY); y++)
+        jobs.push(rawTile(i, z, x, y).then(raw => {
+          const te = grid.getTileCoordExtent([z, x, y]);
+          const c0 = Math.max(0, Math.floor((ext[0] - te[0]) / tres)), c1 = Math.min(TILE_PX, Math.ceil((ext[2] - te[0]) / tres));
+          const r0 = Math.max(0, Math.floor((te[3] - ext[3]) / tres)), r1 = Math.min(TILE_PX, Math.ceil((te[3] - ext[1]) / tres));
+          for (let r = r0; r < r1; r++) for (let c = c0; c < c1; c++) {
+            const o = 4 * (r * TILE_PX + c), g = raw[o + 1];
+            if (raw[o] === 255 && g === 255 && raw[o + 2] === 255) continue;
+            const cls = g >> 6, k = mode === 'bed' ? 0 : cls === 2 ? 0 : cls === 0 ? 1 : -1;
+            if (k < 0) continue;
+            hists[k][(g & 63) << 8 | raw[o + 2]]++; counts[k]++;
+          }
+        }));
+      await Promise.all(jobs);
+      const span = k => {
+        const lo = percentile(hists[k], counts[k], 0.01) - R.zoffset, hi = percentile(hists[k], counts[k], 0.99) - R.zoffset;
+        const step = niceStep(hi - lo);
+        return [Math.floor(lo / step) * step, Math.ceil(hi / step) * step];
+      };
+      const out = Object.assign({}, defaults), MIN = 50;       // too few pixels: keep the scale of the whole map
+      if (mode === 'bed') {
+        if (counts[0] >= MIN) { const [lo, hi] = span(0); out.bed = [Math.min(lo, -50), Math.max(hi, 50)]; }
+      } else {
+        if (counts[0] >= MIN) { const [lo, hi] = span(0); out.srf = [lo, hi > lo ? hi : lo + 100]; }
+        if (counts[1] >= MIN) { const [lo, hi] = span(1); out.ocean = [lo, Math.min(hi, 0) > lo ? Math.min(hi, 0) : lo + 100]; }
+      }
+      return out;
+    }
+
+    // keep the limits of the active style in step with the view (throttled while the user pans and zooms)
+    let timer = null, busy = false, again = false;
+    async function adapt() {
+      const i = active;
+      if (!cfg.styles[i].adaptive) return;
+      if (busy) { again = true; return; }
+      busy = true;
+      try {
+        const lim = adaptiveOn() ? await viewLimits(i) : Object.assign({}, defaults);
+        if (lim && i === active && JSON.stringify(lim) !== JSON.stringify(limits[i])) {
+          limits[i] = lim; baseLayers[i].getSource().refresh(); legend(i);
+        }
+      } catch (e) { console.warn('colour scale', e); }
+      busy = false;
+      if (again) { again = false; schedule(); }
+    }
+    function schedule() { if (!timer) timer = setTimeout(() => { timer = null; adapt(); }, ADAPT_MS); }
+    view.on(['change:center', 'change:resolution'], schedule);
+    map.once('rendercomplete', schedule);
+    adaptToggle.addEventListener('change', () => { legend(active); adapt(); });
+
     legend(0);
     panel.querySelectorAll('input[name=style]').forEach(r => r.addEventListener('change', () => {
-      const i = +r.value; baseLayers.forEach((l, k) => l.setVisible(k === i)); legend(i);
+      active = +r.value; baseLayers.forEach((l, k) => l.setVisible(k === active)); legend(active); schedule();
     }));
     panel.querySelectorAll('input[data-layer]').forEach(c => c.addEventListener('change', () =>
       overlays[c.dataset.layer].setVisible(c.checked)));
